@@ -162,7 +162,7 @@ fun HomeScreen(
 
 @Composable
 fun FeaturedHerbsSection(onHerbClick: (Int) -> Unit) {
-    val featuredHerbs = HerbRepository.herbs.take(3)
+    val featuredHerbs = HerbRepository.getAllHerbs().take(3)
     
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
@@ -200,7 +200,7 @@ fun FeaturedHerbsSection(onHerbClick: (Int) -> Unit) {
 
 @Composable
 fun CategoriesSection(onCategoryClick: (String) -> Unit) {
-    val categories = listOf("补气类", "补血类", "清热类", "解表类", "活血类", "利水渗湿药")
+    val categories = HerbRepository.categories.take(6)
     
     Row(
         modifier = Modifier.fillMaxWidth(),

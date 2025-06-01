@@ -33,21 +33,15 @@ fun HerbsScreen(
     // Filter herbs based on search query and selected category
     val filteredHerbs = remember(searchQuery, currentCategory) {
         val baseList = if (currentCategory == "全部") {
-            HerbRepository.herbs
+            HerbRepository.getAllHerbs()
         } else {
-            HerbRepository.herbs.filter { herb -> 
-                herb.category == currentCategory ||
-                herb.category.contains(currentCategory)
-            }
+            HerbRepository.getHerbsByCategory(currentCategory)
         }
         
         if (searchQuery.isEmpty()) {
             baseList
         } else {
-            baseList.filter { herb ->
-                herb.name.contains(searchQuery) || 
-                herb.pinyin.contains(searchQuery, ignoreCase = true)
-            }
+            HerbRepository.searchHerbs(searchQuery)
         }
     }
     

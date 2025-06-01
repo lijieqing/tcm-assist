@@ -23,7 +23,7 @@ fun HerbDetailScreen(
     herbId: Int,
     onBackPressed: () -> Unit
 ) {
-    val herb = HerbRepository.herbs.find { it.id == herbId }
+    val herb = HerbRepository.getAllHerbs().find { it.id == herbId }
     
     herb?.let {
         Scaffold(
