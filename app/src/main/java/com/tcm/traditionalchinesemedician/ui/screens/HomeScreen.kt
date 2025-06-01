@@ -28,17 +28,6 @@ fun HomeScreen(
     onHerbClick: (Int) -> Unit,
     onCategoryClick: (String) -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var isSearchActive by remember { mutableStateOf(false) }
-    
-    val filteredHerbs = remember(searchQuery) {
-        if (searchQuery.isBlank()) {
-            emptyList()
-        } else {
-            HerbRepository.searchHerbs(searchQuery)
-        }
-    }
-    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -51,92 +40,6 @@ fun HomeScreen(
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-        
-        // Search Bar
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { 
-                searchQuery = it
-                isSearchActive = it.isNotEmpty()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(stringResource(R.string.search_herbs)) },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            singleLine = true,
-            shape = MaterialTheme.shapes.medium
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Search results
-        if (isSearchActive) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Column(
-                    modifier = Modifier.padding(vertical = 8.dp)
-                ) {
-                    Text(
-                        text = "搜索结果",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    
-                    if (filteredHerbs.isEmpty() && searchQuery.isNotEmpty()) {
-                        Text(
-                            text = "未找到匹配的中药",
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    } else {
-                        filteredHerbs.take(3).forEach { herb ->
-                            ListItem(
-                                headlineContent = { 
-                                    Text(
-                                        text = herb.name,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    ) 
-                                },
-                                supportingContent = { 
-                                    Text(
-                                        text = herb.pinyin,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
-                                    ) 
-                                },
-                                modifier = Modifier
-                                    .padding(horizontal = 8.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable { onHerbClick(herb.id) }
-                                    .background(Color.Transparent)
-                            )
-                            Spacer(Modifier.height(6.dp))
-                        }
-                        
-                        if (filteredHerbs.size > 3) {
-                            TextButton(
-                                onClick = { 
-                                    onCategoryClick("全部")
-                                },
-                                modifier = Modifier
-                                    .align(Alignment.End)
-                                    .padding(horizontal = 16.dp)
-                            ) {
-                                Text("查看更多结果")
-                            }
-                        }
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-        }
         
         // Featured Content Section
         Text(

@@ -50,7 +50,12 @@ fun MainScreen() {
             val currentRoute = navBackStackEntry?.destination?.route
             
             // Only show bottom navigation for main screens
-            val showBottomBar = currentRoute in listOf("home", "herbs", "profile")
+            val showBottomBar = when {
+                currentRoute == "home" -> true
+                currentRoute == "profile" -> true
+                currentRoute?.startsWith("herbs") == true -> true
+                else -> false
+            }
             
             if (showBottomBar) {
                 NavigationBar {
@@ -74,9 +79,11 @@ fun MainScreen() {
                     NavigationBarItem(
                         icon = { Icon(Icons.Filled.List, contentDescription = null) },
                         label = { Text(stringResource(R.string.herbs_screen)) },
-                        selected = currentDestination?.hierarchy?.any { it.route == "herbs" } == true,
+                        selected = currentDestination?.hierarchy?.any { 
+                            it.route == "herbs" || it.route?.startsWith("herbs?") == true 
+                        } == true,
                         onClick = {
-                            navController.navigate("herbs") {
+                            navController.navigate("herbs?category=null") {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }

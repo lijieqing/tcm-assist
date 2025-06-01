@@ -6,6 +6,12 @@ import com.google.gson.reflect.TypeToken
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
+data class HerbPairing(
+    val name: String,        // 配伍药材名称
+    val usage: String,       // 配伍用法
+    val effect: String       // 配伍功效
+)
+
 data class Herb(
     val id: Int,                    // 唯一标识符
     val name: String,               // 中药名称
@@ -17,6 +23,8 @@ data class Herb(
     val functions: List<String>,    // 功效
     val indications: List<String>,  // 主治
     val dosage: String,             // 用量
+    val usage: String,              // 用法
+    val commonPairings: List<HerbPairing>, // 常见配伍
     val contraindications: String,  // 禁忌
     val description: String,        // 药物描述
     val imageUrl: String? = null    // 药材图片地址

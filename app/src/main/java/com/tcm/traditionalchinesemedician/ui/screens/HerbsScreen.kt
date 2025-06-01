@@ -1,10 +1,13 @@
 package com.tcm.traditionalchinesemedician.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -18,30 +21,61 @@ import androidx.compose.ui.unit.dp
 import com.tcm.traditionalchinesemedician.R
 import com.tcm.traditionalchinesemedician.data.Herb
 import com.tcm.traditionalchinesemedician.data.HerbRepository
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HerbsScreen(
     selectedCategory: String? = null,
     onHerbClick: (Int) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var currentCategory by remember { mutableStateOf(selectedCategory ?: "全部") }
-    
     val allCategories = listOf("全部") + HerbRepository.categories
     
-    // Filter herbs based on search query and selected category
-    val filteredHerbs = remember(searchQuery, currentCategory) {
-        val baseList = if (currentCategory == "全部") {
-            HerbRepository.getAllHerbs()
-        } else {
-            HerbRepository.getHerbsByCategory(currentCategory)
-        }
-        
+    // 计算初始页面索引
+    val initialPage = if (selectedCategory == "null" || selectedCategory == null) 0 
+        else allCategories.indexOf(selectedCategory).coerceAtLeast(0)
+    
+    // Pager state for horizontal swiping
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { allCategories.size }
+    )
+    
+    // Current category based on pager position
+    val currentCategory = allCategories[pagerState.currentPage]
+    
+    val coroutineScope = rememberCoroutineScope()
+    
+    // 获取搜索结果
+    val searchResults = remember(searchQuery) {
         if (searchQuery.isEmpty()) {
-            baseList
+            emptyList()
         } else {
             HerbRepository.searchHerbs(searchQuery)
+        }
+    }
+    
+    // 根据当前分类和搜索结果过滤药材
+    val filteredHerbs = remember(searchQuery, currentCategory, searchResults) {
+        if (searchQuery.isEmpty()) {
+            // 没有搜索时，根据分类显示
+            if (currentCategory == "全部") {
+                HerbRepository.getAllHerbs()
+            } else {
+                HerbRepository.getHerbsByCategory(currentCategory)
+            }
+        } else {
+            // 有搜索条件时
+            if (currentCategory == "全部") {
+                // 全部标签显示所有搜索结果
+                searchResults
+            } else {
+                // 非全部标签下，根据分类过滤搜索结果
+                searchResults.filter { herb ->
+                    herb.category == currentCategory
+                }
+            }
         }
     }
     
@@ -53,7 +87,15 @@ fun HerbsScreen(
         // Search Bar
         OutlinedTextField(
             value = searchQuery,
-            onValueChange = { searchQuery = it },
+            onValueChange = { 
+                searchQuery = it
+                // 当输入搜索内容时，自动切换到"全部"标签
+                if (it.isNotEmpty()) {
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(0) // 滚动到"全部"标签
+                    }
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text(stringResource(R.string.search_herbs)) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
@@ -63,24 +105,40 @@ fun HerbsScreen(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Category Chips
+        // 可滚动的分类标签栏
         ScrollableTabRow(
-            selectedTabIndex = allCategories.indexOf(currentCategory).coerceAtLeast(0),
-            edgePadding = 0.dp,
-            containerColor = MaterialTheme.colorScheme.surface
+            selectedTabIndex = pagerState.currentPage,
+            edgePadding = 16.dp,
+            containerColor = MaterialTheme.colorScheme.surface,
+            divider = {
+                Divider(
+                    thickness = 2.dp,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                )
+            }
         ) {
-            allCategories.forEachIndexed { _, category ->
+            allCategories.forEachIndexed { index, category ->
                 Tab(
-                    selected = currentCategory == category,
-                    onClick = { currentCategory = category },
-                    text = { Text(category) }
+                    selected = pagerState.currentPage == index,
+                    onClick = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    },
+                    text = { 
+                        Text(
+                            text = category,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        ) 
+                    }
                 )
             }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Herbs List
+        // Herbs List Title
         Text(
             text = "中药列表",
             style = MaterialTheme.typography.titleLarge
@@ -88,22 +146,29 @@ fun HerbsScreen(
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        if (filteredHerbs.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("没有找到匹配的中药")
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f)
-            ) {
-                items(filteredHerbs) { herb ->
-                    HerbListItem(herb, onHerbClick)
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        // HorizontalPager for swiping between categories
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f)
+        ) { _ ->
+            // 显示当前页面的药材列表
+            if (filteredHerbs.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("没有找到匹配的中药")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(filteredHerbs) { herb ->
+                        HerbListItem(herb, onHerbClick)
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    }
                 }
             }
         }
