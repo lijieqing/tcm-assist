@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">中药学习助手</string>
+    <string name="home_screen">首页</string>
+    <string name="herbs_screen">中药库</string>
+    <string name="learning_screen">学习</string>
+    <string name="quiz_screen">测验</string>
+    <string name="profile_screen">我的</string>
+    <string name="search_herbs">搜索中药...</string>
+    <string name="app_description">传统中药学习应用</string>
+    <string name="welcome_message">欢迎使用中药学习助手</string>
+    
+    <!-- Home Screen -->
+    <string name="featured_herbs">精选中药</string>
+    <string name="categories">分类学习</string>
+    <string name="learning_modules">学习模块</string>
+    <string name="start_learning">开始学习</string>
+    
+    <!-- Herbs Screen -->
+    <string name="herbs_list">中药列表</string>
+    <string name="view_details">查看详情</string>
+    <string name="no_herbs_found">没有找到匹配的中药</string>
+    <string name="meridians">归经</string>
+    <string name="functions">功效</string>
+    
+    <!-- Herb Detail Screen -->
+    <string name="basic_properties">基本属性</string>
+    <string name="properties_taste">性味</string>
+    <string name="meridian_tropism">归经</string>
+    <string name="functions_indications">功效与主治</string>
+    <string name="functions_label">功效</string>
+    <string name="indications_label">主治</string>
+    <string name="usage_dosage">用法用量</string>
+    <string name="dosage">用量</string>
+    <string name="contraindications">禁忌</string>
+    <string name="detailed_description">详细介绍</string>
+    <string name="related_herbs">相关中药</string>
+    
+    <!-- Learning Screen -->
+    <string name="learning_courses">中药学习课程</string>
+    <string name="continue_learning">继续学习</string>
+    <string name="completed">已完成</string>
+    
+    <!-- Quiz Screen -->
+    <string name="herb_knowledge_quiz">中药知识测验</string>
+    <string name="questions">题</string>
+    <string name="minutes">分钟</string>
+    <string name="question">问题</string>
+    <string name="submit_answer">提交答案</string>
+    <string name="next_question">下一题</string>
+    <string name="finish_quiz">完成测验</string>
+    <string name="quiz_completed">测验完成！</string>
+    <string name="correct_rate">正确率</string>
+    <string name="return_to_quiz_list">返回测验列表</string>
+    <string name="excellent_result">太棒了！你对中药知识掌握得非常好！</string>
+    <string name="good_result">不错！继续努力学习吧！</string>
+    <string name="need_improvement">需要加强学习，别灰心，继续加油！</string>
+    
+    <!-- Profile Screen -->
+    <string name="learning_stats">学习统计</string>
+    <string name="learning_time">学习时间(小时)</string>
+    <string name="completed_courses">完成课程</string>
+    <string name="quiz_accuracy">测验正确率</string>
+    <string name="recent_learning">最近学习</string>
+    <string name="last_learned">上次学习</string>
+    <string name="settings">设置</string>
+    <string name="edit_profile">编辑个人资料</string>
+    <string name="notification_settings">通知设置</string>
+    <string name="display_settings">显示设置</string>
+    <string name="language">语言</string>
+    <string name="about_app">关于应用</string>
+    <string name="logout">退出登录</string>
+</resources> 

@@ -1,0 +1,65 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+android {
+    compileSdkVersion 34
+    defaultConfig {
+        applicationId "com.tcm.traditionalchinesemedician"
+        minSdkVersion 26
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    buildFeatures {
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion rootProject.ext.compose_version
+    }
+    namespace 'com.tcm.traditionalchinesemedician'
+}
+
+dependencies {
+    implementation "androidx.core:core-ktx:$rootProject.ext.core_ktx_version"
+    implementation "androidx.appcompat:appcompat:$rootProject.ext.appcompat_version"
+    implementation "com.google.android.material:material:$rootProject.ext.material_version"
+    
+    // Jetpack Compose
+    implementation "androidx.compose.ui:ui:$rootProject.ext.compose_version"
+    implementation "androidx.compose.material3:material3:$rootProject.ext.material3_version"
+    implementation "androidx.compose.material3:material3-window-size-class:$rootProject.ext.material3_version"
+    implementation "androidx.compose.material:material:$rootProject.ext.compose_version"
+    implementation "androidx.compose.ui:ui-tooling-preview:$rootProject.ext.compose_version"
+    implementation "androidx.activity:activity-compose:1.8.1"
+    
+    // Material Icons
+    implementation "androidx.compose.material:material-icons-core:$rootProject.ext.compose_version"
+    implementation "androidx.compose.material:material-icons-extended:$rootProject.ext.compose_version"
+    
+    // Lifecycle
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:$rootProject.ext.lifecycle_version"
+    
+    // Navigation Compose
+    implementation "androidx.navigation:navigation-compose:$rootProject.ext.navigation_compose_version"
+    
+    // Testing
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation "androidx.compose.ui:ui-test-junit4:$rootProject.ext.compose_version"
+    debugImplementation "androidx.compose.ui:ui-tooling:$rootProject.ext.compose_version"
+} 
