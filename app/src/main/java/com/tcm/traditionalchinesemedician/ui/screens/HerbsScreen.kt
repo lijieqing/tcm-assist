@@ -16,7 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.tcm.traditionalchinesemedician.R
 import com.tcm.traditionalchinesemedician.data.Herb
@@ -27,9 +32,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun HerbsScreen(
     selectedCategory: String? = null,
+    initialSearchQuery: String = "",
     onHerbClick: (Int) -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
+    var searchQuery by remember { mutableStateOf(initialSearchQuery) }
     val allCategories = listOf("全部") + HerbRepository.categories
     
     // 计算初始页面索引
@@ -41,6 +47,13 @@ fun HerbsScreen(
         initialPage = initialPage,
         pageCount = { allCategories.size }
     )
+    
+    // 如果有初始搜索词，自动切换到"全部"标签
+    LaunchedEffect(initialSearchQuery) {
+        if (initialSearchQuery.isNotEmpty()) {
+            pagerState.animateScrollToPage(0) // 滚动到"全部"标签
+        }
+    }
     
     // Current category based on pager position
     val currentCategory = allCategories[pagerState.currentPage]
@@ -103,7 +116,14 @@ fun HerbsScreen(
             shape = MaterialTheme.shapes.medium
         )
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.search_helper_text),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.padding(top = 4.dp, start = 8.dp)
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
         
         // 可滚动的分类标签栏
         ScrollableTabRow(
@@ -166,7 +186,7 @@ fun HerbsScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(filteredHerbs) { herb ->
-                        HerbListItem(herb, onHerbClick)
+                        HerbListItem(herb, searchQuery, onHerbClick)
                         Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     }
                 }
@@ -176,7 +196,45 @@ fun HerbsScreen(
 }
 
 @Composable
-fun HerbListItem(herb: Herb, onHerbClick: (Int) -> Unit) {
+fun highlightText(text: String, query: String): AnnotatedString {
+    return buildAnnotatedString {
+        if (query.isEmpty()) {
+            append(text)
+            return@buildAnnotatedString
+        }
+        
+        val normalizedQuery = query.trim().lowercase()
+        val normalizedText = text.lowercase()
+        var startIndex = 0
+        
+        while (startIndex < text.length) {
+            val matchIndex = normalizedText.indexOf(normalizedQuery, startIndex)
+            if (matchIndex == -1) {
+                // 如果没有找到匹配，添加剩余文本并结束
+                append(text.substring(startIndex))
+                break
+            }
+            
+            // 添加匹配前的文本
+            append(text.substring(startIndex, matchIndex))
+            
+            // 添加高亮的匹配文本
+            withStyle(style = SpanStyle(
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                background = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            )) {
+                append(text.substring(matchIndex, matchIndex + normalizedQuery.length))
+            }
+            
+            // 更新起始索引
+            startIndex = matchIndex + normalizedQuery.length
+        }
+    }
+}
+
+@Composable
+fun HerbListItem(herb: Herb, searchQuery: String, onHerbClick: (Int) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,32 +244,57 @@ fun HerbListItem(herb: Herb, onHerbClick: (Int) -> Unit) {
             .padding(16.dp)
     ) {
         Text(
-            text = herb.name,
+            text = if (searchQuery.isNotEmpty() && herb.name.lowercase().contains(searchQuery.lowercase())) 
+                    highlightText(herb.name, searchQuery) else AnnotatedString(herb.name),
             style = MaterialTheme.typography.titleMedium
         )
         Text(
-            text = herb.pinyin,
+            text = if (searchQuery.isNotEmpty() && herb.pinyin.lowercase().contains(searchQuery.lowercase())) 
+                    highlightText(herb.pinyin, searchQuery) else AnnotatedString(herb.pinyin),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary
         )
         Spacer(modifier = Modifier.height(4.dp))
+        
+        // 归经
+        val meridiansText = "${stringResource(R.string.meridians)}: ${herb.meridians.joinToString(", ")}"
         Text(
-            text = "归经: ${herb.meridians.joinToString(", ")}",
+            text = if (searchQuery.isNotEmpty() && meridiansText.lowercase().contains(searchQuery.lowercase())) 
+                    highlightText(meridiansText, searchQuery) else AnnotatedString(meridiansText),
             style = MaterialTheme.typography.bodySmall
         )
+        
+        // 功效
+        val functionsText = "${stringResource(R.string.functions)}: ${herb.functions.joinToString(", ")}"
         Text(
-            text = "功效: ${herb.functions.joinToString(", ")}",
+            text = if (searchQuery.isNotEmpty() && functionsText.lowercase().contains(searchQuery.lowercase())) 
+                    highlightText(functionsText, searchQuery) else AnnotatedString(functionsText),
             style = MaterialTheme.typography.bodySmall,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        
+        // 主治
+        val indicationsText = "${stringResource(R.string.indications)}: ${herb.indications.joinToString(", ")}"
         Text(
-            text = herb.description,
+            text = if (searchQuery.isNotEmpty() && indicationsText.lowercase().contains(searchQuery.lowercase())) 
+                    highlightText(indicationsText, searchQuery) else AnnotatedString(indicationsText),
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // 描述
+        Text(
+            text = if (searchQuery.isNotEmpty() && herb.description.lowercase().contains(searchQuery.lowercase())) 
+                    highlightText(herb.description, searchQuery) else AnnotatedString(herb.description),
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
+        
         Spacer(modifier = Modifier.height(8.dp))
         FilledTonalButton(
             onClick = { onHerbClick(herb.id) },

@@ -34,6 +34,10 @@ data class Herb(
 object HerbRepository {
     private var herbs: List<Herb> = emptyList()
     
+    // 缓存随机推荐的功效和主治，避免每次返回首页都重新随机
+    private var cachedRandomFunctions: List<String> = emptyList()
+    private var cachedRandomIndications: List<String> = emptyList()
+    
     // Initialize repository with herbs from JSON file
     fun initialize(context: Context) {
         if (herbs.isEmpty()) {
@@ -46,6 +50,29 @@ object HerbRepository {
             
             bufferedReader.close()
             inputStream.close()
+            
+            // 初始化时进行一次随机，并缓存结果
+            generateRandomRecommendations()
+        }
+    }
+    
+    // 生成随机推荐的功效和主治
+    private fun generateRandomRecommendations() {
+        // 只有在缓存为空时才重新生成
+        if (cachedRandomFunctions.isEmpty()) {
+            val functionsList = mutableListOf<String>()
+            herbs.forEach { herb ->
+                functionsList.addAll(herb.functions)
+            }
+            cachedRandomFunctions = functionsList.distinct().shuffled()
+        }
+        
+        if (cachedRandomIndications.isEmpty()) {
+            val indicationsList = mutableListOf<String>()
+            herbs.forEach { herb ->
+                indicationsList.addAll(herb.indications)
+            }
+            cachedRandomIndications = indicationsList.distinct().shuffled()
         }
     }
     
@@ -56,13 +83,53 @@ object HerbRepository {
     val categories: List<String>
         get() = herbs.map { it.category }.distinct()
     
-    // Search herbs by name or pinyin
+    // Get random recommended functions (only randomized once when app starts)
+    val recommendedFunctions: List<String>
+        get() = cachedRandomFunctions.take(8)
+    
+    // Get random recommended indications (only randomized once when app starts)
+    val recommendedIndications: List<String>
+        get() = cachedRandomIndications.take(8)
+    
+    // Get all unique functions across all herbs
+    val allFunctions: List<String>
+        get() {
+            val functionsList = mutableListOf<String>()
+            herbs.forEach { herb ->
+                functionsList.addAll(herb.functions)
+            }
+            return functionsList.distinct().shuffled()
+        }
+    
+    // Get all unique indications across all herbs
+    val allIndications: List<String>
+        get() {
+            val indicationsList = mutableListOf<String>()
+            herbs.forEach { herb ->
+                indicationsList.addAll(herb.indications)
+            }
+            return indicationsList.distinct().shuffled()
+        }
+    
+    // Search herbs by name, pinyin, or functions (effects)
     fun searchHerbs(query: String): List<Herb> {
         if (query.isBlank()) return herbs
         
+        val normalizedQuery = query.trim().lowercase()
+        
         return herbs.filter { herb ->
-            herb.name.contains(query) || 
-            herb.pinyin.contains(query, ignoreCase = true)
+            // 搜索药材名称
+            herb.name.contains(normalizedQuery) || 
+            // 搜索拼音（不区分大小写）
+            herb.pinyin.lowercase().contains(normalizedQuery) ||
+            // 搜索功效（模糊匹配）
+            herb.functions.any { function -> 
+                function.lowercase().contains(normalizedQuery)
+            } ||
+            // 搜索主治（模糊匹配）
+            herb.indications.any { indication ->
+                indication.lowercase().contains(normalizedQuery)
+            }
         }
     }
     

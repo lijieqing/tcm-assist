@@ -135,8 +135,37 @@ fun AppNavHost(
                 },
                 onCategoryClick = { category ->
                     navController.navigate("herbs?category=$category")
+                },
+                onSearchTermClick = { searchTerm ->
+                    navController.navigate("herbs?category=null&search=$searchTerm")
                 }
             ) 
+        }
+        
+        composable(
+            route = "herbs?category={category}&search={searchTerm}",
+            arguments = listOf(
+                navArgument("category") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("searchTerm") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val category = backStackEntry.arguments?.getString("category")
+            val searchTerm = backStackEntry.arguments?.getString("searchTerm")
+            HerbsScreen(
+                selectedCategory = category,
+                initialSearchQuery = searchTerm ?: "",
+                onHerbClick = { herbId ->
+                    navController.navigate("herb_detail/$herbId")
+                }
+            )
         }
         
         composable(

@@ -6,13 +6,17 @@
     <string name="learning_screen">学习</string>
     <string name="quiz_screen">测验</string>
     <string name="profile_screen">我的</string>
-    <string name="search_herbs">搜索中药...</string>
+    <string name="search_herbs">搜索中药名称、拼音或功效...</string>
+    <string name="search_helper_text">支持搜索药材名称、拼音、功效和主治</string>
     <string name="app_description">传统中药学习应用</string>
     <string name="welcome_message">欢迎使用中药学习助手</string>
     
     <!-- Home Screen -->
     <string name="featured_herbs">精选中药</string>
+    <string name="daily_recommendation">每日推荐</string>
     <string name="categories">分类学习</string>
+    <string name="common_functions">常见功效</string>
+    <string name="common_indications">常见主治</string>
     <string name="learning_modules">学习模块</string>
     <string name="start_learning">开始学习</string>
     
@@ -22,6 +26,7 @@
     <string name="no_herbs_found">没有找到匹配的中药</string>
     <string name="meridians">归经</string>
     <string name="functions">功效</string>
+    <string name="indications">主治</string>
     
     <!-- Herb Detail Screen -->
     <string name="basic_properties">基本属性</string>

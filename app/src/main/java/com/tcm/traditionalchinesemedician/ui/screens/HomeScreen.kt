@@ -19,14 +19,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.tcm.traditionalchinesemedician.R
 import com.tcm.traditionalchinesemedician.data.HerbRepository
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.foundation.layout.Arrangement
+import com.google.accompanist.flowlayout.FlowRow
+import kotlin.math.max
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onHerbClick: (Int) -> Unit,
-    onCategoryClick: (String) -> Unit
+    onCategoryClick: (String) -> Unit,
+    onSearchTermClick: (String) -> Unit = onCategoryClick // 默认复用onCategoryClick函数
 ) {
     Column(
         modifier = Modifier
@@ -43,7 +49,7 @@ fun HomeScreen(
         
         // Featured Content Section
         Text(
-            text = "每日推荐",
+            text = stringResource(R.string.daily_recommendation),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(vertical = 8.dp)
         )
@@ -54,12 +60,44 @@ fun HomeScreen(
         
         // Categories Section
         Text(
-            text = "中药分类",
+            text = stringResource(R.string.categories),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(vertical = 8.dp)
         )
         
         CategoriesSection(onCategoryClick)
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // 功效分类
+        Text(
+            text = stringResource(R.string.common_functions),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        
+        // 显示8个功效标签，使用缓存的随机推荐
+        val functions = HerbRepository.recommendedFunctions
+        FlowTagRow(
+            items = functions,
+            onItemClick = { function -> onSearchTermClick(function) }
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // 主治分类
+        Text(
+            text = stringResource(R.string.common_indications),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        
+        // 显示8个主治标签，使用缓存的随机推荐
+        val indications = HerbRepository.recommendedIndications
+        FlowTagRow(
+            items = indications,
+            onItemClick = { indication -> onSearchTermClick(indication) }
+        )
     }
 }
 
@@ -103,57 +141,54 @@ fun FeaturedHerbsSection(onHerbClick: (Int) -> Unit) {
 
 @Composable
 fun CategoriesSection(onCategoryClick: (String) -> Unit) {
-    val categories = HerbRepository.categories.take(6)
+    // 使用FlowRow布局展示所有分类
+    val categories = HerbRepository.categories
     
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+    FlowTagRow(
+        items = categories,
+        onItemClick = onCategoryClick
+    )
+}
+
+// 自定义流式布局组件，用于显示标签
+@Composable
+fun FlowTagRow(
+    items: List<String>,
+    onItemClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        mainAxisSpacing = 8.dp,
+        crossAxisSpacing = 8.dp
     ) {
-        categories.take(3).forEach { category ->
-            CategoryCard(
-                categoryName = category,
-                onClick = { onCategoryClick(category) }
-            )
-        }
-    }
-    
-    Spacer(modifier = Modifier.height(8.dp))
-    
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        categories.drop(3).forEach { category ->
-            CategoryCard(
-                categoryName = category,
-                onClick = { onCategoryClick(category) }
+        items.forEach { item ->
+            TagItem(
+                text = item,
+                onClick = { onItemClick(item) }
             )
         }
     }
 }
 
+// 通用标签项组件
 @Composable
-fun CategoryCard(categoryName: String, onClick: () -> Unit) {
+fun TagItem(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        modifier = Modifier
-            .width(100.dp)
-            .height(100.dp)
-            .padding(4.dp)
-            .clip(MaterialTheme.shapes.medium)
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
         color = MaterialTheme.colorScheme.secondaryContainer
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(8.dp)
-        ) {
-            Text(
-                text = categoryName,
-                style = MaterialTheme.typography.titleSmall,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
     }
 } 
