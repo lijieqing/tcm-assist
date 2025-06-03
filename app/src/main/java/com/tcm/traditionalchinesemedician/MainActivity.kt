@@ -68,10 +68,9 @@ fun MainScreen() {
                         onClick = {
                             navController.navigate("home") {
                                 popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+                                    inclusive = true
                                 }
                                 launchSingleTop = true
-                                restoreState = true
                             }
                         }
                     )
@@ -134,7 +133,11 @@ fun AppNavHost(
                     navController.navigate("herb_detail/$herbId")
                 },
                 onCategoryClick = { category ->
-                    navController.navigate("herbs?category=$category")
+                    if (category.isNotEmpty()) {
+                        navController.navigate("herbs?category=$category")
+                    } else {
+                        navController.navigate("herbs?category=null")
+                    }
                 },
                 onSearchTermClick = { searchTerm ->
                     navController.navigate("herbs?category=null&search=$searchTerm")

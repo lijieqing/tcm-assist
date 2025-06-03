@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -32,39 +33,60 @@ fun HerbDetailScreen(
     herbId: Int,
     onBackPressed: () -> Unit
 ) {
-    val herb = HerbRepository.getAllHerbs().find { it.id == herbId }
+    val context = LocalContext.current
+    val repository = remember { HerbRepository.getInstance(context) }
+    var herb by remember { mutableStateOf<Herb?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
     
-    herb?.let {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text(herb.name) },
-                    navigationIcon = {
-                        IconButton(onClick = onBackPressed) {
-                            Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
-                        }
+    // Load herb details
+    LaunchedEffect(herbId) {
+        isLoading = true
+        herb = repository.getHerbById(herbId)
+        isLoading = false
+    }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(herb?.name ?: "中药详情") },
+                navigationIcon = {
+                    IconButton(onClick = onBackPressed) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
                     }
-                )
+                }
+            )
+        }
+    ) { paddingValues ->
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
-        ) { paddingValues ->
+        } else if (herb != null) {
             Column(
                 modifier = Modifier
                     .padding(paddingValues)
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
             ) {
-                HerbHeader(herb)
+                HerbHeader(herb!!)
                 
-                HerbContent(herb)
+                HerbContent(herb!!)
             }
-        }
-    } ?: run {
-        // Herb not found
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("未找到中药信息")
+        } else {
+            // Herb not found
+            Box(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("未找到中药信息")
+            }
         }
     }
 }

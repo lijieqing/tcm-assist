@@ -9,14 +9,16 @@ buildscript {
         material3_version = '1.1.2'
         lifecycle_version = '2.6.2'
         navigation_compose_version = '2.7.5'
+        ksp_version = '1.9.20-1.0.14'
     }
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.0.2'
+        classpath 'com.android.tools.build:gradle:7.4.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "com.google.devtools.ksp:symbol-processing-gradle-plugin:$ksp_version"
     }
 }
 
@@ -24,6 +26,15 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+    
+    // 禁用JDK镜像创建，解决jlink错误
+    configurations.all {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'org.jetbrains.kotlin' && details.requested.name.startsWith('kotlin-stdlib')) {
+                details.useVersion kotlin_version
+            }
+        }
     }
 }
 

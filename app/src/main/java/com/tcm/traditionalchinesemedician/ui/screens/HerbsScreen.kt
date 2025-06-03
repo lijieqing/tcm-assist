@@ -3,18 +3,43 @@ package com.tcm.traditionalchinesemedician.ui.screens
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -35,18 +60,58 @@ fun HerbsScreen(
     initialSearchQuery: String = "",
     onHerbClick: (Int) -> Unit
 ) {
+    val context = LocalContext.current
+    val repository = remember { HerbRepository.getInstance(context) }
+    
     var searchQuery by remember { mutableStateOf(initialSearchQuery) }
-    val allCategories = listOf("全部") + HerbRepository.categories
+    var allCategories by remember { mutableStateOf(listOf("全部")) }
+    
+    // 分页加载的状态
+    val pageSize = 20
+    var currentPage by remember { mutableStateOf(0) }
+    var isLoading by remember { mutableStateOf(false) }
+    var hasMoreData by remember { mutableStateOf(true) }
+    
+    // 用于存储药材列表的状态
+    var filteredHerbs by remember { mutableStateOf(emptyList<Herb>()) }
+    
+    // 列表状态，用于检测是否滚动到底部
+    val listState = rememberLazyListState()
+    
+    // 加载分类数据
+    LaunchedEffect(Unit) {
+        val categories = repository.getAllCategories()
+        allCategories = listOf("全部") + categories
+    }
     
     // 计算初始页面索引
-    val initialPage = if (selectedCategory == "null" || selectedCategory == null) 0 
-        else allCategories.indexOf(selectedCategory).coerceAtLeast(0)
+    var initialPage by remember { mutableStateOf(0) }
+    LaunchedEffect(allCategories, selectedCategory) {
+        initialPage = if (selectedCategory == null || selectedCategory == "null") {
+            0 // 默认选择"全部"
+        } else {
+            // 查找匹配的分类索引
+            val index = allCategories.indexOf(selectedCategory)
+            if (index >= 0) index else 0
+        }
+    }
     
     // Pager state for horizontal swiping
     val pagerState = rememberPagerState(
         initialPage = initialPage,
         pageCount = { allCategories.size }
     )
+    
+    // 如果分类列表已加载且选定了分类，自动滚动到对应标签
+    // 这确保了即使在分类加载后才设置了 pagerState，也能正确跳转
+    LaunchedEffect(allCategories, selectedCategory) {
+        if (allCategories.size > 1 && selectedCategory != null && selectedCategory != "null") {
+            val categoryIndex = allCategories.indexOf(selectedCategory)
+            if (categoryIndex >= 0 && categoryIndex != pagerState.currentPage) {
+                pagerState.animateScrollToPage(categoryIndex)
+            }
+        }
+    }
     
     // 如果有初始搜索词，自动切换到"全部"标签
     LaunchedEffect(initialSearchQuery) {
@@ -60,36 +125,57 @@ fun HerbsScreen(
     
     val coroutineScope = rememberCoroutineScope()
     
-    // 获取搜索结果
-    val searchResults = remember(searchQuery) {
-        if (searchQuery.isEmpty()) {
-            emptyList()
-        } else {
-            HerbRepository.searchHerbs(searchQuery)
-        }
+    // 加载药材数据
+    LaunchedEffect(searchQuery, currentCategory) {
+        // 重置分页状态
+        currentPage = 0
+        isLoading = true
+        hasMoreData = true
+        
+        loadHerbs(
+            repository = repository,
+            searchQuery = searchQuery,
+            currentCategory = currentCategory,
+            page = currentPage,
+            pageSize = pageSize,
+            onResult = { herbs ->
+                filteredHerbs = herbs
+                isLoading = false
+                hasMoreData = herbs.size == pageSize
+            }
+        )
     }
     
-    // 根据当前分类和搜索结果过滤药材
-    val filteredHerbs = remember(searchQuery, currentCategory, searchResults) {
-        if (searchQuery.isEmpty()) {
-            // 没有搜索时，根据分类显示
-            if (currentCategory == "全部") {
-                HerbRepository.getAllHerbs()
-            } else {
-                HerbRepository.getHerbsByCategory(currentCategory)
-            }
-        } else {
-            // 有搜索条件时
-            if (currentCategory == "全部") {
-                // 全部标签显示所有搜索结果
-                searchResults
-            } else {
-                // 非全部标签下，根据分类过滤搜索结果
-                searchResults.filter { herb ->
-                    herb.category == currentCategory
+    // 检测滚动到底部，加载更多数据
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastVisibleIndex ->
+                if (lastVisibleIndex != null && 
+                    lastVisibleIndex >= filteredHerbs.size - 5 && 
+                    !isLoading && 
+                    hasMoreData
+                ) {
+                    isLoading = true
+                    currentPage++
+                    
+                    loadHerbs(
+                        repository = repository,
+                        searchQuery = searchQuery,
+                        currentCategory = currentCategory,
+                        page = currentPage,
+                        pageSize = pageSize,
+                        onResult = { newHerbs ->
+                            if (newHerbs.isNotEmpty()) {
+                                filteredHerbs = filteredHerbs + newHerbs
+                                hasMoreData = newHerbs.size == pageSize
+                            } else {
+                                hasMoreData = false
+                            }
+                            isLoading = false
+                        }
+                    )
                 }
             }
-        }
     }
     
     Column(
@@ -172,7 +258,7 @@ fun HerbsScreen(
             modifier = Modifier.weight(1f)
         ) { _ ->
             // 显示当前页面的药材列表
-            if (filteredHerbs.isEmpty()) {
+            if (filteredHerbs.isEmpty() && !isLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -183,14 +269,57 @@ fun HerbsScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState
                 ) {
                     items(filteredHerbs) { herb ->
                         HerbListItem(herb, searchQuery, onHerbClick)
                         Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     }
+                    
+                    if (isLoading) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
                 }
             }
+        }
+    }
+}
+
+// 辅助函数，根据搜索条件和分类加载药材
+private suspend fun loadHerbs(
+    repository: HerbRepository,
+    searchQuery: String,
+    currentCategory: String,
+    page: Int,
+    pageSize: Int,
+    onResult: (List<Herb>) -> Unit
+) {
+    if (searchQuery.isEmpty()) {
+        // 没有搜索时，根据分类显示
+        if (currentCategory == "全部") {
+            onResult(repository.getAllHerbsPaged(page, pageSize))
+        } else {
+            onResult(repository.getHerbsByCategoryPaged(currentCategory, page, pageSize))
+        }
+    } else {
+        // 有搜索条件时
+        if (currentCategory == "全部") {
+            // 全部标签显示所有搜索结果
+            onResult(repository.searchHerbsPaged(searchQuery, page, pageSize))
+        } else {
+            // 非全部标签下，根据分类过滤搜索结果
+            val herbs = repository.searchHerbsPaged(searchQuery, page, pageSize * 2)
+            onResult(herbs.filter { it.category == currentCategory }.take(pageSize))
         }
     }
 }

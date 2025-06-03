@@ -1,31 +1,39 @@
 package com.tcm.traditionalchinesemedician.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
-import com.tcm.traditionalchinesemedician.R
-import com.tcm.traditionalchinesemedician.data.HerbRepository
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.foundation.layout.Arrangement
 import com.google.accompanist.flowlayout.FlowRow
-import kotlin.math.max
+import com.tcm.traditionalchinesemedician.R
+import com.tcm.traditionalchinesemedician.data.Herb
+import com.tcm.traditionalchinesemedician.data.HerbRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +42,28 @@ fun HomeScreen(
     onCategoryClick: (String) -> Unit,
     onSearchTermClick: (String) -> Unit = onCategoryClick // 默认复用onCategoryClick函数
 ) {
+    val context = LocalContext.current
+    val repository = remember { HerbRepository.getInstance(context) }
+    
+    // State for featured herbs
+    var featuredHerbs by remember { mutableStateOf(emptyList<Herb>()) }
+    var categories by remember { mutableStateOf(emptyList<String>()) }
+    var recommendedFunctions by remember { mutableStateOf(emptyList<String>()) }
+    var recommendedIndications by remember { mutableStateOf(emptyList<String>()) }
+    
+    // LaunchedEffect to load data when screen becomes visible
+    LaunchedEffect(key1 = Unit) {
+        // Load featured herbs
+        featuredHerbs = repository.getAllHerbsSync().take(3)
+        
+        // Load categories
+        categories = repository.getAllCategories()
+        
+        // Load recommended functions and indications
+        recommendedFunctions = repository.getRecommendedFunctions(8)
+        recommendedIndications = repository.getRecommendedIndications(8)
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -54,7 +84,7 @@ fun HomeScreen(
             modifier = Modifier.padding(vertical = 8.dp)
         )
         
-        FeaturedHerbsSection(onHerbClick)
+        FeaturedHerbsSection(featuredHerbs, onHerbClick)
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -65,7 +95,7 @@ fun HomeScreen(
             modifier = Modifier.padding(vertical = 8.dp)
         )
         
-        CategoriesSection(onCategoryClick)
+        CategoriesSection(categories, onCategoryClick)
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -77,9 +107,8 @@ fun HomeScreen(
         )
         
         // 显示8个功效标签，使用缓存的随机推荐
-        val functions = HerbRepository.recommendedFunctions
         FlowTagRow(
-            items = functions,
+            items = recommendedFunctions,
             onItemClick = { function -> onSearchTermClick(function) }
         )
         
@@ -93,18 +122,15 @@ fun HomeScreen(
         )
         
         // 显示8个主治标签，使用缓存的随机推荐
-        val indications = HerbRepository.recommendedIndications
         FlowTagRow(
-            items = indications,
+            items = recommendedIndications,
             onItemClick = { indication -> onSearchTermClick(indication) }
         )
     }
 }
 
 @Composable
-fun FeaturedHerbsSection(onHerbClick: (Int) -> Unit) {
-    val featuredHerbs = HerbRepository.getAllHerbs().take(3)
-    
+fun FeaturedHerbsSection(featuredHerbs: List<Herb>, onHerbClick: (Int) -> Unit) {
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -140,10 +166,8 @@ fun FeaturedHerbsSection(onHerbClick: (Int) -> Unit) {
 }
 
 @Composable
-fun CategoriesSection(onCategoryClick: (String) -> Unit) {
+fun CategoriesSection(categories: List<String>, onCategoryClick: (String) -> Unit) {
     // 使用FlowRow布局展示所有分类
-    val categories = HerbRepository.categories
-    
     FlowTagRow(
         items = categories,
         onItemClick = onCategoryClick
