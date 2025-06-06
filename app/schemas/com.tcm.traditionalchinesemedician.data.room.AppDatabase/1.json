@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "eba5b26812d2c905e3c96721c35aa965",
+    "identityHash": "7b924c7d3f92f1d6a1b1b1a5f9e4c7d2",
     "entities": [
       {
         "tableName": "herbs",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `pinyin` TEXT NOT NULL, `category` TEXT NOT NULL, `properties` TEXT NOT NULL, `taste` TEXT NOT NULL, `meridians` TEXT NOT NULL, `functions` TEXT NOT NULL, `indications` TEXT NOT NULL, `dosage` TEXT NOT NULL, `usage` TEXT NOT NULL, `commonPairings` TEXT NOT NULL, `contraindications` TEXT NOT NULL, `description` TEXT NOT NULL, `imageUrl` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `pinYin` TEXT, `category` TEXT NOT NULL, `url` TEXT, `medicinalPart` TEXT, `tasteMeridian` TEXT, `properties` TEXT, `taste` TEXT, `meridians` TEXT, `effects` TEXT, `functions` TEXT, `clinicalApplication` TEXT, `prescriptionName` TEXT, `usageDosage` TEXT, `notes` TEXT, `formulas` TEXT, `literature` TEXT, `affiliatedHerbs` TEXT, `images` TEXT, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -21,10 +21,10 @@
             "notNull": true
           },
           {
-            "fieldPath": "pinyin",
-            "columnName": "pinyin",
+            "fieldPath": "pinYin",
+            "columnName": "pinYin",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
             "fieldPath": "category",
@@ -33,68 +33,98 @@
             "notNull": true
           },
           {
+            "fieldPath": "url",
+            "columnName": "url",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "medicinalPart",
+            "columnName": "medicinalPart",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "tasteMeridian",
+            "columnName": "tasteMeridian",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
             "fieldPath": "properties",
             "columnName": "properties",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
             "fieldPath": "taste",
             "columnName": "taste",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
             "fieldPath": "meridians",
             "columnName": "meridians",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
+          },
+          {
+            "fieldPath": "effects",
+            "columnName": "effects",
+            "affinity": "TEXT",
+            "notNull": false
           },
           {
             "fieldPath": "functions",
             "columnName": "functions",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
-            "fieldPath": "indications",
-            "columnName": "indications",
+            "fieldPath": "clinicalApplication",
+            "columnName": "clinicalApplication",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
-            "fieldPath": "dosage",
-            "columnName": "dosage",
+            "fieldPath": "prescriptionName",
+            "columnName": "prescriptionName",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
-            "fieldPath": "usage",
-            "columnName": "usage",
+            "fieldPath": "usageDosage",
+            "columnName": "usageDosage",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
-            "fieldPath": "commonPairings",
-            "columnName": "commonPairings",
+            "fieldPath": "notes",
+            "columnName": "notes",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
-            "fieldPath": "contraindications",
-            "columnName": "contraindications",
+            "fieldPath": "formulas",
+            "columnName": "formulas",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
-            "fieldPath": "description",
-            "columnName": "description",
+            "fieldPath": "literature",
+            "columnName": "literature",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
-            "fieldPath": "imageUrl",
-            "columnName": "imageUrl",
+            "fieldPath": "affiliatedHerbs",
+            "columnName": "affiliatedHerbs",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "images",
+            "columnName": "images",
             "affinity": "TEXT",
             "notNull": false
           }
@@ -144,7 +174,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'eba5b26812d2c905e3c96721c35aa965')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7b924c7d3f92f1d6a1b1b1a5f9e4c7d2')"
     ]
   }
 }

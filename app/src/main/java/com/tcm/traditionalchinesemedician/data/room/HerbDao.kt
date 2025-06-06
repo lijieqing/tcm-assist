@@ -63,14 +63,15 @@ interface HerbDao {
     suspend fun getHerbsByCategoryPaged(category: String, limit: Int, offset: Int): List<HerbEntity>
     
     /**
-     * Search herbs by name, pinyin, functions, or indications
+     * Search herbs by name, pinYin, functions, or clinicalApplication
      * @param query The search query
      * @return A list of HerbEntity objects that match the query
      */
     @Query("SELECT * FROM herbs WHERE name LIKE '%' || :query || '%' OR " +
-           "pinyin LIKE '%' || :query || '%' OR " +
-           "functions LIKE '%' || :query || '%' OR " +
-           "indications LIKE '%' || :query || '%'")
+           "(pinYin IS NOT NULL AND pinYin LIKE '%' || :query || '%') OR " +
+           "(functions IS NOT NULL AND functions LIKE '%' || :query || '%') OR " +
+           "(clinicalApplication IS NOT NULL AND clinicalApplication LIKE '%' || :query || '%') OR " +
+           "(effects IS NOT NULL AND effects LIKE '%' || :query || '%')")
     suspend fun searchHerbs(query: String): List<HerbEntity>
     
     /**
@@ -81,9 +82,10 @@ interface HerbDao {
      * @return A list of HerbEntity objects that match the query
      */
     @Query("SELECT * FROM herbs WHERE name LIKE '%' || :query || '%' OR " +
-           "pinyin LIKE '%' || :query || '%' OR " +
-           "functions LIKE '%' || :query || '%' OR " +
-           "indications LIKE '%' || :query || '%' " +
+           "(pinYin IS NOT NULL AND pinYin LIKE '%' || :query || '%') OR " +
+           "(functions IS NOT NULL AND functions LIKE '%' || :query || '%') OR " +
+           "(clinicalApplication IS NOT NULL AND clinicalApplication LIKE '%' || :query || '%') OR " +
+           "(effects IS NOT NULL AND effects LIKE '%' || :query || '%') " +
            "LIMIT :limit OFFSET :offset")
     suspend fun searchHerbsPaged(query: String, limit: Int, offset: Int): List<HerbEntity>
     

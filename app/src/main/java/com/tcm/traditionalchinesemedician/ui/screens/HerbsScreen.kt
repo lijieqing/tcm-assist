@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -75,9 +76,6 @@ fun HerbsScreen(
     // 用于存储药材列表的状态
     var filteredHerbs by remember { mutableStateOf(emptyList<Herb>()) }
     
-    // 列表状态，用于检测是否滚动到底部
-    val listState = rememberLazyListState()
-    
     // 加载分类数据
     LaunchedEffect(Unit) {
         val categories = repository.getAllCategories()
@@ -99,7 +97,7 @@ fun HerbsScreen(
     // Pager state for horizontal swiping
     val pagerState = rememberPagerState(
         initialPage = initialPage,
-        pageCount = { allCategories.size }
+        pageCount = { maxOf(1, allCategories.size) } // 确保至少有一页
     )
     
     // 如果分类列表已加载且选定了分类，自动滚动到对应标签
@@ -121,7 +119,14 @@ fun HerbsScreen(
     }
     
     // Current category based on pager position
-    val currentCategory = allCategories[pagerState.currentPage]
+    val currentCategory = remember(allCategories, pagerState.currentPage) {
+        // 同步块确保对allCategories的访问是线程安全的
+        synchronized(allCategories) {
+            // 安全获取当前分类，防止索引越界
+            val safeIndex = pagerState.currentPage.coerceIn(0, allCategories.size - 1)
+            allCategories.getOrElse(safeIndex) { "全部" }
+        }
+    }
     
     val coroutineScope = rememberCoroutineScope()
     
@@ -144,38 +149,6 @@ fun HerbsScreen(
                 hasMoreData = herbs.size == pageSize
             }
         )
-    }
-    
-    // 检测滚动到底部，加载更多数据
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastVisibleIndex ->
-                if (lastVisibleIndex != null && 
-                    lastVisibleIndex >= filteredHerbs.size - 5 && 
-                    !isLoading && 
-                    hasMoreData
-                ) {
-                    isLoading = true
-                    currentPage++
-                    
-                    loadHerbs(
-                        repository = repository,
-                        searchQuery = searchQuery,
-                        currentCategory = currentCategory,
-                        page = currentPage,
-                        pageSize = pageSize,
-                        onResult = { newHerbs ->
-                            if (newHerbs.isNotEmpty()) {
-                                filteredHerbs = filteredHerbs + newHerbs
-                                hasMoreData = newHerbs.size == pageSize
-                            } else {
-                                hasMoreData = false
-                            }
-                            isLoading = false
-                        }
-                    )
-                }
-            }
     }
     
     Column(
@@ -211,33 +184,51 @@ fun HerbsScreen(
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        // 可滚动的分类标签栏
-        ScrollableTabRow(
-            selectedTabIndex = pagerState.currentPage,
-            edgePadding = 16.dp,
-            containerColor = MaterialTheme.colorScheme.surface,
-            divider = {
-                Divider(
-                    thickness = 2.dp,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                )
-            }
-        ) {
-            allCategories.forEachIndexed { index, category ->
-                Tab(
-                    selected = pagerState.currentPage == index,
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(index)
+        // 可滚动的分类标签栏 - 仅在有类别数据时显示
+        if (allCategories.size > 0) {
+            ScrollableTabRow(
+                selectedTabIndex = minOf(pagerState.currentPage, allCategories.size - 1).coerceAtLeast(0),
+                edgePadding = 16.dp,
+                containerColor = MaterialTheme.colorScheme.surface,
+                divider = {
+                    Divider(
+                        thickness = 2.dp,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    )
+                }
+            ) {
+                allCategories.forEachIndexed { index, category ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = {
+                            // 确保索引在有效范围内
+                            if (index < allCategories.size) {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                            }
+                        },
+                        text = { 
+                            Text(
+                                text = category,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            ) 
                         }
-                    },
-                    text = { 
-                        Text(
-                            text = category,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        ) 
-                    }
+                    )
+                }
+            }
+        } else {
+            // 如果没有类别数据，显示加载指示器
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
                 )
             }
         }
@@ -256,7 +247,43 @@ fun HerbsScreen(
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f)
-        ) { _ ->
+        ) { pageIndex ->
+            // 为每个页面创建独立的滚动状态
+            val pageListState = rememberLazyListState()
+            
+            // 检测滚动到底部，加载更多数据
+            LaunchedEffect(pageListState, pageIndex) {
+                snapshotFlow { pageListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+                    .collect { lastVisibleIndex ->
+                        if (lastVisibleIndex != null && 
+                            lastVisibleIndex >= filteredHerbs.size - 5 && 
+                            !isLoading && 
+                            hasMoreData && 
+                            pageIndex == pagerState.currentPage // 确保只有当前页触发加载
+                        ) {
+                            isLoading = true
+                            currentPage++
+                            
+                            loadHerbs(
+                                repository = repository,
+                                searchQuery = searchQuery,
+                                currentCategory = currentCategory,
+                                page = currentPage,
+                                pageSize = pageSize,
+                                onResult = { newHerbs ->
+                                    if (newHerbs.isNotEmpty()) {
+                                        filteredHerbs = filteredHerbs + newHerbs
+                                        hasMoreData = newHerbs.size == pageSize
+                                    } else {
+                                        hasMoreData = false
+                                    }
+                                    isLoading = false
+                                }
+                            )
+                        }
+                    }
+            }
+            
             // 显示当前页面的药材列表
             if (filteredHerbs.isEmpty() && !isLoading) {
                 Box(
@@ -270,7 +297,7 @@ fun HerbsScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    state = listState
+                    state = pageListState
                 ) {
                     items(filteredHerbs) { herb ->
                         HerbListItem(herb, searchQuery, onHerbClick)
@@ -368,68 +395,64 @@ fun HerbListItem(herb: Herb, searchQuery: String, onHerbClick: (Int) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.Transparent)
-            .padding(vertical = 8.dp)
             .clickable { onHerbClick(herb.id) }
             .padding(16.dp)
     ) {
+        // 药材名称
         Text(
             text = if (searchQuery.isNotEmpty() && herb.name.lowercase().contains(searchQuery.lowercase())) 
                     highlightText(herb.name, searchQuery) else AnnotatedString(herb.name),
-            style = MaterialTheme.typography.titleMedium
-        )
-        Text(
-            text = if (searchQuery.isNotEmpty() && herb.pinyin.lowercase().contains(searchQuery.lowercase())) 
-                    highlightText(herb.pinyin, searchQuery) else AnnotatedString(herb.pinyin),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        // 归经
-        val meridiansText = "${stringResource(R.string.meridians)}: ${herb.meridians.joinToString(", ")}"
-        Text(
-            text = if (searchQuery.isNotEmpty() && meridiansText.lowercase().contains(searchQuery.lowercase())) 
-                    highlightText(meridiansText, searchQuery) else AnnotatedString(meridiansText),
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
         )
         
-        // 功效
-        val functionsText = "${stringResource(R.string.functions)}: ${herb.functions.joinToString(", ")}"
-        Text(
-            text = if (searchQuery.isNotEmpty() && functionsText.lowercase().contains(searchQuery.lowercase())) 
-                    highlightText(functionsText, searchQuery) else AnnotatedString(functionsText),
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-        
-        // 主治
-        val indicationsText = "${stringResource(R.string.indications)}: ${herb.indications.joinToString(", ")}"
-        Text(
-            text = if (searchQuery.isNotEmpty() && indicationsText.lowercase().contains(searchQuery.lowercase())) 
-                    highlightText(indicationsText, searchQuery) else AnnotatedString(indicationsText),
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
+        // 拼音
+        herb.pinYin?.let { pinYin ->
+            Text(
+                text = if (searchQuery.isNotEmpty() && pinYin.lowercase().contains(searchQuery.lowercase())) 
+                        highlightText(pinYin, searchQuery) else AnnotatedString(pinYin),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.secondary
+            )
+        }
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        // 描述
-        Text(
-            text = if (searchQuery.isNotEmpty() && herb.description.lowercase().contains(searchQuery.lowercase())) 
-                    highlightText(herb.description, searchQuery) else AnnotatedString(herb.description),
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
+        // 性味归经
+        herb.tasteMeridian?.let {
+            val tasteMeridianText = "${stringResource(R.string.taste_meridian)}: $it"
+            Text(
+                text = if (searchQuery.isNotEmpty() && tasteMeridianText.lowercase().contains(searchQuery.lowercase())) 
+                        highlightText(tasteMeridianText, searchQuery) else AnnotatedString(tasteMeridianText),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         
-        Spacer(modifier = Modifier.height(8.dp))
-        FilledTonalButton(
-            onClick = { onHerbClick(herb.id) },
-            modifier = Modifier.align(Alignment.End)
-        ) {
-            Text("查看详情")
+        // 药用部位
+        herb.medicinalPart?.let {
+            val medicinalPartText = "${stringResource(R.string.medicinal_part)}: $it"
+            Text(
+                text = if (searchQuery.isNotEmpty() && medicinalPartText.lowercase().contains(searchQuery.lowercase())) 
+                        highlightText(medicinalPartText, searchQuery) else AnnotatedString(medicinalPartText),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        
+        // 功效描述
+        herb.effects?.let {
+            val effectsText = "${stringResource(R.string.effects)}: $it"
+            Text(
+                text = if (searchQuery.isNotEmpty() && effectsText.lowercase().contains(searchQuery.lowercase())) 
+                        highlightText(effectsText, searchQuery) else AnnotatedString(effectsText),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 } 

@@ -17,39 +17,60 @@ data class HerbEntity(
     @PrimaryKey
     val id: Int,
     val name: String,
-    val pinyin: String,
+    val pinYin: String?,
     val category: String,
-    val properties: String,
-    val taste: String,
-    val meridians: String, // Stored as JSON string
-    val functions: String, // Stored as JSON string
-    val indications: String, // Stored as JSON string
-    val dosage: String,
-    val usage: String,
-    val commonPairings: String, // Stored as JSON string
-    val contraindications: String,
-    val description: String,
-    val imageUrl: String?
+    val url: String?,
+    val medicinalPart: String?,
+    val tasteMeridian: String?,
+    val properties: String?,
+    val taste: String?,
+    val meridians: String?, // Stored as JSON string
+    val effects: String?,
+    val functions: String?, // Stored as JSON string
+    val clinicalApplication: String?, // Stored as JSON string
+    val prescriptionName: String?,
+    val usageDosage: String?,
+    val notes: String?, // Stored as JSON string
+    val formulas: String?, // Stored as JSON string
+    val literature: String?, // Stored as JSON string
+    val affiliatedHerbs: String?, // Stored as JSON string
+    val images: String? // Stored as JSON string
 ) {
     // Convert from database entity to domain model
     fun toHerb(): Herb {
         val gson = Gson()
+        
+        // 使用明确的类型转换方法而不是直接使用TypeToken泛型
+        fun parseStringList(json: String?): List<String>? {
+            if (json == null) return null
+            return try {
+                gson.fromJson(json, Array<String>::class.java).toList()
+            } catch (e: Exception) {
+                null
+            }
+        }
+        
         return Herb(
             id = id,
             name = name,
-            pinyin = pinyin,
+            pinYin = pinYin,
             category = category,
+            url = url,
+            medicinalPart = medicinalPart,
+            tasteMeridian = tasteMeridian,
             properties = properties,
             taste = taste,
-            meridians = gson.fromJson(meridians, object : TypeToken<List<String>>() {}.type),
-            functions = gson.fromJson(functions, object : TypeToken<List<String>>() {}.type),
-            indications = gson.fromJson(indications, object : TypeToken<List<String>>() {}.type),
-            dosage = dosage,
-            usage = usage,
-            commonPairings = gson.fromJson(commonPairings, object : TypeToken<List<HerbPairing>>() {}.type),
-            contraindications = contraindications,
-            description = description,
-            imageUrl = imageUrl
+            meridians = parseStringList(meridians),
+            effects = effects,
+            functions = parseStringList(functions),
+            clinicalApplication = parseStringList(clinicalApplication),
+            prescriptionName = prescriptionName,
+            usageDosage = usageDosage,
+            notes = parseStringList(notes),
+            formulas = parseStringList(formulas),
+            literature = parseStringList(literature),
+            affiliatedHerbs = parseStringList(affiliatedHerbs),
+            images = parseStringList(images)
         )
     }
 
@@ -57,22 +78,38 @@ data class HerbEntity(
         // Convert from domain model to database entity
         fun fromHerb(herb: Herb): HerbEntity {
             val gson = Gson()
+            
+            // 将List<String>转换为JSON字符串
+            fun stringListToJson(list: List<String>?): String? {
+                if (list == null) return null
+                return try {
+                    gson.toJson(list)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            
             return HerbEntity(
                 id = herb.id,
                 name = herb.name,
-                pinyin = herb.pinyin,
+                pinYin = herb.pinYin,
                 category = herb.category,
+                url = herb.url,
+                medicinalPart = herb.medicinalPart,
+                tasteMeridian = herb.tasteMeridian,
                 properties = herb.properties,
                 taste = herb.taste,
-                meridians = gson.toJson(herb.meridians),
-                functions = gson.toJson(herb.functions),
-                indications = gson.toJson(herb.indications),
-                dosage = herb.dosage,
-                usage = herb.usage,
-                commonPairings = gson.toJson(herb.commonPairings),
-                contraindications = herb.contraindications,
-                description = herb.description,
-                imageUrl = herb.imageUrl
+                meridians = stringListToJson(herb.meridians),
+                effects = herb.effects,
+                functions = stringListToJson(herb.functions),
+                clinicalApplication = stringListToJson(herb.clinicalApplication),
+                prescriptionName = herb.prescriptionName,
+                usageDosage = herb.usageDosage,
+                notes = stringListToJson(herb.notes),
+                formulas = stringListToJson(herb.formulas),
+                literature = stringListToJson(herb.literature),
+                affiliatedHerbs = stringListToJson(herb.affiliatedHerbs),
+                images = stringListToJson(herb.images)
             )
         }
     }

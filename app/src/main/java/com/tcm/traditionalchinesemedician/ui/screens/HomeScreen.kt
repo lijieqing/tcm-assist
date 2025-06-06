@@ -49,7 +49,7 @@ fun HomeScreen(
     var featuredHerbs by remember { mutableStateOf(emptyList<Herb>()) }
     var categories by remember { mutableStateOf(emptyList<String>()) }
     var recommendedFunctions by remember { mutableStateOf(emptyList<String>()) }
-    var recommendedIndications by remember { mutableStateOf(emptyList<String>()) }
+    var recommendedClinicalApplications by remember { mutableStateOf(emptyList<String>()) }
     
     // LaunchedEffect to load data when screen becomes visible
     LaunchedEffect(key1 = Unit) {
@@ -59,9 +59,9 @@ fun HomeScreen(
         // Load categories
         categories = repository.getAllCategories()
         
-        // Load recommended functions and indications
+        // Load recommended functions and clinical applications
         recommendedFunctions = repository.getRecommendedFunctions(8)
-        recommendedIndications = repository.getRecommendedIndications(8)
+        recommendedClinicalApplications = repository.getRecommendedClinicalApplications(8)
     }
     
     Column(
@@ -114,17 +114,17 @@ fun HomeScreen(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // 主治分类
+        // 临床应用分类
         Text(
             text = stringResource(R.string.common_indications),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(vertical = 8.dp)
         )
         
-        // 显示8个主治标签，使用缓存的随机推荐
+        // 显示8个临床应用标签，使用缓存的随机推荐
         FlowTagRow(
-            items = recommendedIndications,
-            onItemClick = { indication -> onSearchTermClick(indication) }
+            items = recommendedClinicalApplications,
+            onItemClick = { application -> onSearchTermClick(application) }
         )
     }
 }
@@ -149,16 +149,33 @@ fun FeaturedHerbsSection(featuredHerbs: List<Herb>, onHerbClick: (Int) -> Unit) 
                         text = herb.name,
                         style = MaterialTheme.typography.titleMedium
                     )
-                    Text(
-                        text = herb.pinyin,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    herb.pinYin?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = herb.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 3
-                    )
+                    
+                    // 显示药材功效描述
+                    herb.effects?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 3
+                        )
+                    }
+                    
+                    // 显示药用部位（如果effects为null）
+                    if (herb.effects == null) {
+                        herb.medicinalPart?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 3
+                            )
+                        }
+                    }
                 }
             }
         }

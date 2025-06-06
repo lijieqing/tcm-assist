@@ -28,9 +28,9 @@ class HerbRepository private constructor(private val context: Context) {
     private val versionDao = database.versionDao()
     private val appScope = CoroutineScope(Dispatchers.IO)
     
-    // 缓存随机推荐的功效和主治，避免每次返回首页都重新随机
+    // 缓存随机推荐的功效和临床应用，避免每次返回首页都重新随机
     private var cachedRandomFunctions: List<String> = emptyList()
-    private var cachedRandomIndications: List<String> = emptyList()
+    private var cachedRandomClinicalApplications: List<String> = emptyList()
     
     /**
      * Initialize repository by checking if database needs to be updated from JSON
@@ -86,8 +86,83 @@ class HerbRepository private constructor(private val context: Context) {
                 // Parse JSON to get herb list
                 val jsonObject = Gson().fromJson(herbsJson, JsonObject::class.java)
                 val herbsArray = jsonObject.getAsJsonArray("herbs")
-                val herbListType = object : TypeToken<List<Herb>>() {}.type
-                val herbs = Gson().fromJson<List<Herb>>(herbsArray, herbListType)
+                
+                // 将JSON中的蛇形命名转换为驼峰命名
+                val herbs = mutableListOf<Herb>()
+                
+                for (i in 0 until herbsArray.size()) {
+                    val herbObj = herbsArray.get(i).asJsonObject
+                    
+                    // 提取基本字段
+                    val id = if (herbObj.has("id")) herbObj.get("id").asInt else i + 1
+                    val name = herbObj.get("name").asString
+                    val category = herbObj.get("category").asString
+                    
+                    // 提取可空字段，注意命名转换
+                    val pinYin = if (herbObj.has("pin_yin")) herbObj.get("pin_yin").asString else null
+                    val url = if (herbObj.has("url")) herbObj.get("url").asString else null
+                    val medicinalPart = if (herbObj.has("medicinal_part")) herbObj.get("medicinal_part").asString else null
+                    val tasteMeridian = if (herbObj.has("taste_meridian")) herbObj.get("taste_meridian").asString else null
+                    val properties = if (herbObj.has("properties")) herbObj.get("properties").asString else null
+                    val taste = if (herbObj.has("taste")) herbObj.get("taste").asString else null
+                    val effects = if (herbObj.has("effects")) herbObj.get("effects").asString else null
+                    val prescriptionName = if (herbObj.has("prescription_name")) herbObj.get("prescription_name").asString else null
+                    val usageDosage = if (herbObj.has("usage_dosage")) herbObj.get("usage_dosage").asString else null
+                    
+                    // 提取数组类型字段
+                    val gson = Gson()
+                    val typeToken = object : TypeToken<List<String>>() {}.type
+                    
+                    val meridians = if (herbObj.has("meridians")) 
+                        gson.fromJson<List<String>>(herbObj.get("meridians"), typeToken) else null
+                    
+                    val functions = if (herbObj.has("functions")) 
+                        gson.fromJson<List<String>>(herbObj.get("functions"), typeToken) else null
+                    
+                    val clinicalApplication = if (herbObj.has("clinical_application")) 
+                        gson.fromJson<List<String>>(herbObj.get("clinical_application"), typeToken) else null
+                    
+                    val notes = if (herbObj.has("notes")) 
+                        gson.fromJson<List<String>>(herbObj.get("notes"), typeToken) else null
+                    
+                    val formulas = if (herbObj.has("formulas")) 
+                        gson.fromJson<List<String>>(herbObj.get("formulas"), typeToken) else null
+                    
+                    val literature = if (herbObj.has("literature")) 
+                        gson.fromJson<List<String>>(herbObj.get("literature"), typeToken) else null
+                    
+                    val affiliatedHerbs = if (herbObj.has("affiliated_herbs")) 
+                        gson.fromJson<List<String>>(herbObj.get("affiliated_herbs"), typeToken) else null
+                    
+                    val images = if (herbObj.has("images")) 
+                        gson.fromJson<List<String>>(herbObj.get("images"), typeToken) else null
+                    
+                    // 创建Herb对象
+                    val herb = Herb(
+                        id = id,
+                        name = name,
+                        pinYin = pinYin,
+                        category = category,
+                        url = url,
+                        medicinalPart = medicinalPart,
+                        tasteMeridian = tasteMeridian,
+                        properties = properties,
+                        taste = taste,
+                        meridians = meridians,
+                        effects = effects,
+                        functions = functions,
+                        clinicalApplication = clinicalApplication,
+                        prescriptionName = prescriptionName,
+                        usageDosage = usageDosage,
+                        notes = notes,
+                        formulas = formulas,
+                        literature = literature,
+                        affiliatedHerbs = affiliatedHerbs,
+                        images = images
+                    )
+                    
+                    herbs.add(herb)
+                }
                 
                 // Clear existing herbs
                 herbDao.deleteAllHerbs()
@@ -111,7 +186,7 @@ class HerbRepository private constructor(private val context: Context) {
     }
     
     /**
-     * Generate random recommendations for functions and indications
+     * Generate random recommendations for functions and clinical applications
      */
     private suspend fun generateRandomRecommendations() {
         withContext(Dispatchers.IO) {
@@ -122,8 +197,8 @@ class HerbRepository private constructor(private val context: Context) {
                 // Update functions recommendations
                 updateFunctionsRecommendations(allHerbs)
                 
-                // Update indications recommendations
-                updateIndicationsRecommendations(allHerbs)
+                // Update clinical applications recommendations
+                updateClinicalApplicationsRecommendations(allHerbs)
             } catch (e: Exception) {
                 Log.e("HerbRepository", "Error generating recommendations", e)
             }
@@ -138,23 +213,23 @@ class HerbRepository private constructor(private val context: Context) {
         if (cachedRandomFunctions.isEmpty()) {
             val functionsList = mutableListOf<String>()
             for (herb in allHerbs) {
-                functionsList.addAll(herb.functions)
+                herb.functions?.let { functionsList.addAll(it) }
             }
             cachedRandomFunctions = functionsList.distinct().shuffled()
         }
     }
     
     /**
-     * Helper method to update indications recommendations
+     * Helper method to update clinical applications recommendations
      */
-    private fun updateIndicationsRecommendations(allHerbs: List<Herb>) {
+    private fun updateClinicalApplicationsRecommendations(allHerbs: List<Herb>) {
         // Only update if cache is empty
-        if (cachedRandomIndications.isEmpty()) {
-            val indicationsList = mutableListOf<String>()
+        if (cachedRandomClinicalApplications.isEmpty()) {
+            val clinicalApplicationsList = mutableListOf<String>()
             for (herb in allHerbs) {
-                indicationsList.addAll(herb.indications)
+                herb.clinicalApplication?.let { clinicalApplicationsList.addAll(it) }
             }
-            cachedRandomIndications = indicationsList.distinct().shuffled()
+            cachedRandomClinicalApplications = clinicalApplicationsList.distinct().shuffled()
         }
     }
     
@@ -175,7 +250,8 @@ class HerbRepository private constructor(private val context: Context) {
             val entities = herbDao.getAllHerbs().first()
             entities.map { it.toHerb() }
         } catch (e: Exception) {
-            Log.e("HerbRepository", "Error getting herbs", e)
+            Log.e("HerbRepository", "Error getting herbs: ${e.message}", e)
+            e.printStackTrace()
             emptyList()
         }
     }
@@ -210,14 +286,14 @@ class HerbRepository private constructor(private val context: Context) {
     }
     
     /**
-     * Get random recommended indications
+     * Get random recommended clinical applications
      */
-    suspend fun getRecommendedIndications(count: Int = 8): List<String> = withContext(Dispatchers.IO) {
-        cachedRandomIndications.take(count)
+    suspend fun getRecommendedClinicalApplications(count: Int = 8): List<String> = withContext(Dispatchers.IO) {
+        cachedRandomClinicalApplications.take(count)
     }
     
     /**
-     * Search herbs by name, pinyin, functions, or indications
+     * Search herbs by name, pinYin, functions, or clinical application
      */
     suspend fun searchHerbs(query: String): List<Herb> = withContext(Dispatchers.IO) {
         if (query.isBlank()) {
@@ -265,7 +341,7 @@ class HerbRepository private constructor(private val context: Context) {
     }
     
     /**
-     * Get total count of herbs
+     * Get total number of herbs
      */
     suspend fun getHerbCount(): Int = withContext(Dispatchers.IO) {
         herbDao.getHerbCount()
@@ -277,7 +353,7 @@ class HerbRepository private constructor(private val context: Context) {
         
         fun getInstance(context: Context): HerbRepository {
             return INSTANCE ?: synchronized(this) {
-                val instance = HerbRepository(context.applicationContext)
+                val instance = HerbRepository(context)
                 INSTANCE = instance
                 instance
             }

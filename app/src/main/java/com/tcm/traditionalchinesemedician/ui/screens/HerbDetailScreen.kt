@@ -26,6 +26,10 @@ import com.tcm.traditionalchinesemedician.data.HerbRepository
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,41 +97,80 @@ fun HerbDetailScreen(
 
 @Composable
 fun HerbHeader(herb: Herb) {
+    val uriHandler = LocalUriHandler.current
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // Herb image placeholder
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Filled.LocalPharmacy,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-            )
+        // Herb image
+        if (herb.images != null && herb.images.isNotEmpty()) {
+            // TODO: 实现图片加载逻辑
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.LocalPharmacy,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.LocalPharmacy,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                )
+            }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = herb.name,
-                style = MaterialTheme.typography.headlineMedium
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = herb.name,
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                
+                herb.url?.let { url ->
+                    IconButton(onClick = { uriHandler.openUri(url) }) {
+                        Icon(
+                            imageVector = Icons.Filled.Link,
+                            contentDescription = "查看详情页",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
             
-            Text(
-                text = herb.pinyin,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
+            herb.pinYin?.let { pinYin ->
+                Text(
+                    text = pinYin,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
             
             Spacer(modifier = Modifier.height(4.dp))
             
@@ -157,202 +200,199 @@ fun HerbContent(herb: Herb) {
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // Basic properties
+        // 基本属性（只保留药用部位和性味归经）
         ContentSection(title = "基本属性") {
-            PropertyItem(label = "性味", value = herb.properties + "，" + herb.taste)
-            PropertyItem(label = "归经", value = herb.meridians.joinToString("、"))
+            herb.medicinalPart?.let { 
+                PropertyItem(label = "药用部位", value = it)
+            }
+            
+            herb.tasteMeridian?.let {
+                PropertyItem(label = "性味归经", value = it)
+            }
         }
         
-        // Functions and indications
-        ContentSection(title = "功效与主治") {
-            Text(
-                text = "功效",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+        // 功效与临床应用（移除功效的显示）
+        ContentSection(title = "功效与临床应用") {
+            herb.functions?.let { functions ->
+                Text(
+                    text = "功效分类",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                FunctionsTagsRow(functions, MaterialTheme.colorScheme.primary)
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
             
-            FunctionsTagsRow(herb.functions, MaterialTheme.colorScheme.primary)
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "主治",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            
-            IndicationsTagsRow(herb.indications, MaterialTheme.colorScheme.tertiary)
+            herb.clinicalApplication?.let {
+                Text(
+                    text = "临床应用",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                ClinicalApplicationsTagsRow(it, MaterialTheme.colorScheme.tertiary)
+            }
         }
         
-        // Usage information
+        // 用法用量
         ContentSection(title = "用法用量") {
-            PropertyItem(label = "用量", value = herb.dosage)
-            PropertyItem(label = "用法", value = herb.usage)
-            PropertyItem(label = "禁忌", value = herb.contraindications)
+            herb.prescriptionName?.let {
+                PropertyItem(label = "处方用名", value = it)
+            }
+            
+            herb.usageDosage?.let {
+                PropertyItem(label = "用法用量", value = it)
+            }
         }
         
-        // Common pairings section with tags
-        CommonPairingsSection(herb.commonPairings)
+        // 附注说明
+        herb.notes?.let {
+            if (it.isNotEmpty()) {
+                ContentSection(title = "附注说明") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        it.forEach { note ->
+                            Text(
+                                text = note,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                }
+            }
+        }
         
-        // Detailed description
-        ContentSection(title = "详细介绍") {
-            Text(
-                text = herb.description,
-                style = MaterialTheme.typography.bodyLarge
-            )
+        // 方剂举例
+        herb.formulas?.let {
+            if (it.isNotEmpty()) {
+                ContentSection(title = "方剂举例") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        it.forEach { formula ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                                )
+                            ) {
+                                Text(
+                                    text = formula,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun FunctionsTagsRow(functions: List<String>, baseColor: androidx.compose.ui.graphics.Color) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        functions.forEach { function ->
-            SuggestionChip(
-                onClick = { },
-                label = { 
-                    Text(
-                        text = function,
-                        style = MaterialTheme.typography.bodyMedium
-                    ) 
-                },
-                icon = {
-                    Icon(
-                        Icons.Filled.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = baseColor
-                    )
-                },
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = baseColor.copy(alpha = 0.08f),
-                    labelColor = MaterialTheme.colorScheme.onSurface
-                ),
-                border = SuggestionChipDefaults.suggestionChipBorder(
-                    borderColor = baseColor.copy(alpha = 0.3f)
-                )
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun IndicationsTagsRow(indications: List<String>, baseColor: androidx.compose.ui.graphics.Color) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        indications.forEach { indication ->
-            SuggestionChip(
-                onClick = { },
-                label = { 
-                    Text(
-                        text = indication,
-                        style = MaterialTheme.typography.bodyMedium
-                    ) 
-                },
-                icon = {
-                    Icon(
-                        Icons.Filled.Favorite,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = baseColor
-                    )
-                },
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = baseColor.copy(alpha = 0.08f),
-                    labelColor = MaterialTheme.colorScheme.onSurface
-                ),
-                border = SuggestionChipDefaults.suggestionChipBorder(
-                    borderColor = baseColor.copy(alpha = 0.3f)
-                )
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun CommonPairingsSection(pairings: List<HerbPairing>) {
-    var selectedPairing by remember { mutableStateOf<HerbPairing?>(null) }
-    
-    ContentSection(title = "常见配伍") {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            pairings.forEach { pairing ->
-                ElevatedAssistChip(
-                    onClick = { selectedPairing = pairing },
-                    label = { 
-                        Text(
-                            text = pairing.name,
-                            style = MaterialTheme.typography.bodyMedium
-                        ) 
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Filled.LocalPharmacy,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    colors = AssistChipDefaults.elevatedAssistChipColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                    ),
-                    border = AssistChipDefaults.assistChipBorder(
-                        borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                    )
-                )
+        
+        // 文献摘录（无内容时隐藏标题）
+        herb.literature?.let {
+            if (it.isNotEmpty()) {
+                ContentSection(title = "文献摘录") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        it.forEach { literature ->
+                            Text(
+                                text = literature,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
-    
-    // Dialog to show pairing details
-    selectedPairing?.let { pairing ->
-        Dialog(onDismissRequest = { selectedPairing = null }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(16.dp)
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun FunctionsTagsRow(functions: List<String>?, baseColor: Color) {
+    functions?.let { functionsList ->
+        if (functionsList.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = pairing.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
+                functionsList.forEach { function ->
+                    SuggestionChip(
+                        onClick = { },
+                        label = { 
+                            Text(
+                                text = function,
+                                style = MaterialTheme.typography.bodyMedium
+                            ) 
+                        },
+                        icon = {
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = baseColor
+                            )
+                        },
+                        colors = SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = baseColor.copy(alpha = 0.08f),
+                            labelColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = SuggestionChipDefaults.suggestionChipBorder(
+                            borderColor = baseColor.copy(alpha = 0.3f)
+                        )
                     )
-                    
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
-                    
-                    PropertyItem(label = "用法", value = pairing.usage)
-                    PropertyItem(label = "功效", value = pairing.effect)
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Button(
-                        onClick = { selectedPairing = null },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text("关闭")
-                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ClinicalApplicationsTagsRow(clinicalApplications: List<String>?, baseColor: Color) {
+    clinicalApplications?.let { applicationsList ->
+        if (applicationsList.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                applicationsList.forEach { application ->
+                    SuggestionChip(
+                        onClick = { },
+                        label = { 
+                            Text(
+                                text = application,
+                                style = MaterialTheme.typography.bodyMedium
+                            ) 
+                        },
+                        icon = {
+                            Icon(
+                                Icons.Filled.Info,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = baseColor
+                            )
+                        },
+                        colors = SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = baseColor.copy(alpha = 0.08f),
+                            labelColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = SuggestionChipDefaults.suggestionChipBorder(
+                            borderColor = baseColor.copy(alpha = 0.3f)
+                        )
+                    )
                 }
             }
         }
@@ -390,24 +430,26 @@ fun ContentSection(
 }
 
 @Composable
-fun PropertyItem(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.width(56.dp)
-        )
-        
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 8.dp)
-        )
+fun PropertyItem(label: String, value: String?) {
+    value?.let {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.width(72.dp)
+            )
+            
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
     }
 } 

@@ -7,7 +7,7 @@
     <string name="quiz_screen">测验</string>
     <string name="profile_screen">我的</string>
     <string name="search_herbs">搜索中药名称、拼音或功效...</string>
-    <string name="search_helper_text">支持搜索药材名称、拼音、功效和主治</string>
+    <string name="search_helper_text">支持搜索药材名称、拼音、功效和药用部位</string>
     <string name="app_description">传统中药学习应用</string>
     <string name="welcome_message">欢迎使用中药学习助手</string>
     
@@ -16,7 +16,7 @@
     <string name="daily_recommendation">每日推荐</string>
     <string name="categories">分类学习</string>
     <string name="common_functions">常见功效</string>
-    <string name="common_indications">常见主治</string>
+    <string name="common_indications">常见临床应用</string>
     <string name="learning_modules">学习模块</string>
     <string name="start_learning">开始学习</string>
     
@@ -27,17 +27,24 @@
     <string name="meridians">归经</string>
     <string name="functions">功效</string>
     <string name="indications">主治</string>
+    <string name="taste_meridian">性味归经</string>
+    <string name="medicinal_part">药用部位</string>
+    <string name="effects">功效描述</string>
     
     <!-- Herb Detail Screen -->
     <string name="basic_properties">基本属性</string>
     <string name="properties_taste">性味</string>
     <string name="meridian_tropism">归经</string>
-    <string name="functions_indications">功效与主治</string>
+    <string name="functions_indications">功效与临床应用</string>
     <string name="functions_label">功效</string>
-    <string name="indications_label">主治</string>
+    <string name="clinical_application">临床应用</string>
     <string name="usage_dosage">用法用量</string>
     <string name="dosage">用量</string>
-    <string name="contraindications">禁忌</string>
+    <string name="prescription_name">处方用名</string>
+    <string name="notes">附注说明</string>
+    <string name="formulas">方剂举例</string>
+    <string name="literature">文献摘录</string>
+    <string name="affiliated_herbs">附药</string>
     <string name="detailed_description">详细介绍</string>
     <string name="related_herbs">相关中药</string>
     
