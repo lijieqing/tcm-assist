@@ -8,9 +8,11 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -23,13 +25,18 @@ import androidx.navigation.navArgument
 import com.tcm.traditionalchinesemedician.data.HerbRepository
 import com.tcm.traditionalchinesemedician.ui.screens.*
 import com.tcm.traditionalchinesemedician.ui.theme.TraditionalChineseMedicianTheme
+import com.tcm.traditionalchinesemedician.ui.viewmodels.HerbDetailViewModel
+import com.tcm.traditionalchinesemedician.ui.viewmodels.HerbsViewModel
+import com.tcm.traditionalchinesemedician.ui.viewmodels.HomeViewModel
+import com.tcm.traditionalchinesemedician.ui.viewmodels.ProfileViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Initialize HerbRepository with application context
-        HerbRepository.initialize(applicationContext)
+        // Get the HerbRepository instance
+        // This will trigger the init block which calls initialize()
+        HerbRepository.getInstance(applicationContext)
         
         setContent {
             TraditionalChineseMedicianTheme {
@@ -43,6 +50,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
+    
+    // Create ViewModels at the top level
+    val homeViewModel: HomeViewModel = viewModel()
+    val herbsViewModel: HerbsViewModel = viewModel()
+    val profileViewModel: ProfileViewModel = viewModel()
     
     Scaffold(
         bottomBar = {
@@ -82,12 +94,19 @@ fun MainScreen() {
                             it.route == "herbs" || it.route?.startsWith("herbs?") == true 
                         } == true,
                         onClick = {
+                            // 重置搜索和分类状态
+                            herbsViewModel.apply {
+                                updateSearchQuery("")
+                                updateSelectedCategory(null)
+                                loadDataWithCurrentState()
+                            }
+                            // 导航到中药库页面
                             navController.navigate("herbs?category=null") {
                                 popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+                                    saveState = false
                                 }
                                 launchSingleTop = true
-                                restoreState = true
+                                restoreState = false
                             }
                         }
                     )
@@ -112,6 +131,9 @@ fun MainScreen() {
     ) { innerPadding ->
         AppNavHost(
             navController = navController,
+            homeViewModel = homeViewModel,
+            herbsViewModel = herbsViewModel,
+            profileViewModel = profileViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -120,6 +142,9 @@ fun MainScreen() {
 @Composable
 fun AppNavHost(
     navController: NavHostController,
+    homeViewModel: HomeViewModel,
+    herbsViewModel: HerbsViewModel,
+    profileViewModel: ProfileViewModel,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -129,18 +154,40 @@ fun AppNavHost(
     ) {
         composable("home") { 
             HomeScreen(
+                viewModel = homeViewModel,
                 onHerbClick = { herbId ->
                     navController.navigate("herb_detail/$herbId")
                 },
                 onCategoryClick = { category ->
-                    if (category.isNotEmpty()) {
-                        navController.navigate("herbs?category=$category")
-                    } else {
-                        navController.navigate("herbs?category=null")
+                    // 清除搜索内容，设置选中的分类
+                    herbsViewModel.apply {
+                        updateSearchQuery("")
+                        updateSelectedCategory(if (category.isEmpty()) null else category)
+                        loadDataWithCurrentState()
+                    }
+                    // 然后导航到中药库页面
+                    navController.navigate("herbs?category=${if (category.isEmpty()) "null" else category}") {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = false
+                        }
+                        launchSingleTop = true
+                        restoreState = false
                     }
                 },
                 onSearchTermClick = { searchTerm ->
-                    navController.navigate("herbs?category=null&search=$searchTerm")
+                    // 设置搜索内容，清除选中的分类
+                    herbsViewModel.apply {
+                        updateSearchQuery(searchTerm)
+                        updateSelectedCategory(null)
+                        performSearch()
+                    }
+                    navController.navigate("herbs?category=null&search=$searchTerm") {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = false
+                        }
+                        launchSingleTop = true
+                        restoreState = false
+                    }
                 }
             ) 
         }
@@ -162,9 +209,31 @@ fun AppNavHost(
         ) { backStackEntry ->
             val category = backStackEntry.arguments?.getString("category")
             val searchTerm = backStackEntry.arguments?.getString("searchTerm")
+            
+            // 使用LaunchedEffect确保每次导航参数变化时更新状态
+            LaunchedEffect(key1 = searchTerm, key2 = category) {
+                herbsViewModel.apply {
+                    // 更新搜索内容
+                    if (!searchTerm.isNullOrEmpty()) {
+                        updateSearchQuery(searchTerm)
+                    } else {
+                        updateSearchQuery("")
+                    }
+                    
+                    // 更新选中的分类
+                    if (category != null && category != "null") {
+                        updateSelectedCategory(category)
+                    } else {
+                        updateSelectedCategory(null)
+                    }
+                    
+                    // 加载数据
+                    loadDataWithCurrentState()
+                }
+            }
+            
             HerbsScreen(
-                selectedCategory = category,
-                initialSearchQuery = searchTerm ?: "",
+                viewModel = herbsViewModel,
                 onHerbClick = { herbId ->
                     navController.navigate("herb_detail/$herbId")
                 }
@@ -182,15 +251,36 @@ fun AppNavHost(
             )
         ) { backStackEntry ->
             val category = backStackEntry.arguments?.getString("category")
+            
+            // 使用LaunchedEffect确保每次导航参数变化时更新状态
+            LaunchedEffect(key1 = category) {
+                herbsViewModel.apply {
+                    // 清除搜索内容
+                    updateSearchQuery("")
+                    
+                    // 更新选中的分类
+                    if (category != null && category != "null") {
+                        updateSelectedCategory(category)
+                    } else {
+                        updateSelectedCategory(null)
+                    }
+                    
+                    // 加载数据
+                    loadDataWithCurrentState()
+                }
+            }
+            
             HerbsScreen(
-                selectedCategory = category,
+                viewModel = herbsViewModel,
                 onHerbClick = { herbId ->
                     navController.navigate("herb_detail/$herbId")
                 }
             )
         }
         
-        composable("profile") { ProfileScreen() }
+        composable("profile") { 
+            ProfileScreen(viewModel = profileViewModel) 
+        }
         
         composable(
             route = "herb_detail/{herbId}",
@@ -201,8 +291,15 @@ fun AppNavHost(
             )
         ) { backStackEntry ->
             val herbId = backStackEntry.arguments?.getInt("herbId") ?: 0
+            
+            // Create a new ViewModel for each detail page
+            val detailViewModel: HerbDetailViewModel = viewModel()
+            
+            // Load herb details
+            detailViewModel.loadHerbDetail(herbId)
+            
             HerbDetailScreen(
-                herbId = herbId,
+                viewModel = detailViewModel,
                 onBackPressed = {
                     navController.popBackStack()
                 }

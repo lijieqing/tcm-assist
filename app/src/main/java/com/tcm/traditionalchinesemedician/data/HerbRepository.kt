@@ -32,6 +32,11 @@ class HerbRepository private constructor(private val context: Context) {
     private var cachedRandomFunctions: List<String> = emptyList()
     private var cachedRandomClinicalApplications: List<String> = emptyList()
     
+    init {
+        // Always initialize on construction to ensure data is available
+        initialize()
+    }
+    
     /**
      * Initialize repository by checking if database needs to be updated from JSON
      */
@@ -199,8 +204,72 @@ class HerbRepository private constructor(private val context: Context) {
                 
                 // Update clinical applications recommendations
                 updateClinicalApplicationsRecommendations(allHerbs)
+                
+                // If either list is still empty after updating, try one more time with a different approach
+                if (cachedRandomFunctions.isEmpty() || cachedRandomClinicalApplications.isEmpty()) {
+                    Log.d("HerbRepository", "Empty cached lists detected, trying alternative method")
+                    generateFallbackRecommendations(allHerbs)
+                }
             } catch (e: Exception) {
                 Log.e("HerbRepository", "Error generating recommendations", e)
+                // Initialize with default values if an error occurs
+                if (cachedRandomFunctions.isEmpty()) {
+                    cachedRandomFunctions = listOf("祛风", "解表", "清热", "泻火", "消食", "理气", "活血", "化瘀")
+                }
+                if (cachedRandomClinicalApplications.isEmpty()) {
+                    cachedRandomClinicalApplications = listOf("感冒", "发热", "咳嗽", "腹痛", "头痛", "消化不良", "月经不调", "失眠")
+                }
+            }
+        }
+    }
+    
+    /**
+     * Fallback method to generate recommendations if the primary method fails
+     */
+    private fun generateFallbackRecommendations(allHerbs: List<Herb>) {
+        // Extract functions
+        if (cachedRandomFunctions.isEmpty()) {
+            val functionsList = mutableListOf<String>()
+            allHerbs.forEach { herb ->
+                herb.functions?.forEach { function ->
+                    if (function.isNotBlank() && function.length < 15) {
+                        functionsList.add(function)
+                    }
+                }
+            }
+            
+            if (functionsList.isNotEmpty()) {
+                cachedRandomFunctions = functionsList.distinct().shuffled()
+                Log.d("HerbRepository", "Generated ${cachedRandomFunctions.size} functions using fallback")
+            } else {
+                // Hardcoded default if extraction still fails
+                cachedRandomFunctions = listOf("祛风", "解表", "清热", "泻火", "消食", "理气", "活血", "化瘀")
+                Log.d("HerbRepository", "Using hardcoded functions")
+            }
+        }
+        
+        // Extract clinical applications
+        if (cachedRandomClinicalApplications.isEmpty()) {
+            val clinicalApplicationsList = mutableListOf<String>()
+            allHerbs.forEach { herb ->
+                herb.clinicalApplication?.forEach { application ->
+                    // Extract shorter, concise terms from clinical applications
+                    val cleanedApplication = application.replace(Regex("^\\d+\\.用于"), "")
+                                                       .replace(Regex("等症.*$"), "")
+                                                       .trim()
+                    if (cleanedApplication.isNotBlank() && cleanedApplication.length < 20) {
+                        clinicalApplicationsList.add(cleanedApplication)
+                    }
+                }
+            }
+            
+            if (clinicalApplicationsList.isNotEmpty()) {
+                cachedRandomClinicalApplications = clinicalApplicationsList.distinct().shuffled()
+                Log.d("HerbRepository", "Generated ${cachedRandomClinicalApplications.size} applications using fallback")
+            } else {
+                // Hardcoded default if extraction still fails
+                cachedRandomClinicalApplications = listOf("感冒", "发热", "咳嗽", "腹痛", "头痛", "消化不良", "月经不调", "失眠")
+                Log.d("HerbRepository", "Using hardcoded applications")
             }
         }
     }
@@ -216,6 +285,7 @@ class HerbRepository private constructor(private val context: Context) {
                 herb.functions?.let { functionsList.addAll(it) }
             }
             cachedRandomFunctions = functionsList.distinct().shuffled()
+            Log.d("HerbRepository", "Generated ${cachedRandomFunctions.size} functions")
         }
     }
     
@@ -230,6 +300,7 @@ class HerbRepository private constructor(private val context: Context) {
                 herb.clinicalApplication?.let { clinicalApplicationsList.addAll(it) }
             }
             cachedRandomClinicalApplications = clinicalApplicationsList.distinct().shuffled()
+            Log.d("HerbRepository", "Generated ${cachedRandomClinicalApplications.size} applications")
         }
     }
     
@@ -282,14 +353,52 @@ class HerbRepository private constructor(private val context: Context) {
      * Get random recommended functions
      */
     suspend fun getRecommendedFunctions(count: Int = 8): List<String> = withContext(Dispatchers.IO) {
-        cachedRandomFunctions.take(count)
+        // If cache is empty, try to generate recommendations
+        if (cachedRandomFunctions.isEmpty()) {
+            try {
+                generateRandomRecommendations()
+            } catch (e: Exception) {
+                Log.e("HerbRepository", "Error generating functions for retrieval", e)
+            }
+            
+            // If still empty after generation attempt, use hardcoded fallback
+            if (cachedRandomFunctions.isEmpty()) {
+                cachedRandomFunctions = listOf("祛风", "解表", "清热", "泻火", "消食", "理气", "活血", "化瘀")
+            }
+        }
+        
+        // Return requested number of items, cycling through list if necessary
+        return@withContext if (cachedRandomFunctions.size <= count) {
+            cachedRandomFunctions
+        } else {
+            cachedRandomFunctions.take(count)
+        }
     }
     
     /**
      * Get random recommended clinical applications
      */
     suspend fun getRecommendedClinicalApplications(count: Int = 8): List<String> = withContext(Dispatchers.IO) {
-        cachedRandomClinicalApplications.take(count)
+        // If cache is empty, try to generate recommendations
+        if (cachedRandomClinicalApplications.isEmpty()) {
+            try {
+                generateRandomRecommendations()
+            } catch (e: Exception) {
+                Log.e("HerbRepository", "Error generating applications for retrieval", e)
+            }
+            
+            // If still empty after generation attempt, use hardcoded fallback
+            if (cachedRandomClinicalApplications.isEmpty()) {
+                cachedRandomClinicalApplications = listOf("感冒", "发热", "咳嗽", "腹痛", "头痛", "消化不良", "月经不调", "失眠")
+            }
+        }
+        
+        // Return requested number of items, cycling through list if necessary
+        return@withContext if (cachedRandomClinicalApplications.size <= count) {
+            cachedRandomClinicalApplications
+        } else {
+            cachedRandomClinicalApplications.take(count)
+        }
     }
     
     /**
@@ -307,12 +416,11 @@ class HerbRepository private constructor(private val context: Context) {
     /**
      * Search herbs with pagination
      */
-    suspend fun searchHerbsPaged(query: String, page: Int, pageSize: Int): List<Herb> = withContext(Dispatchers.IO) {
+    suspend fun searchHerbsPaged(query: String, pageSize: Int, offset: Int): List<Herb> = withContext(Dispatchers.IO) {
         if (query.isBlank()) {
-            getAllHerbsPaged(page, pageSize)
+            getAllHerbsPaged(offset / pageSize, pageSize)
         } else {
             val normalizedQuery = query.trim().lowercase()
-            val offset = page * pageSize
             herbDao.searchHerbsPaged(normalizedQuery, pageSize, offset).map { it.toHerb() }
         }
     }
@@ -331,11 +439,10 @@ class HerbRepository private constructor(private val context: Context) {
     /**
      * Filter herbs by category with pagination
      */
-    suspend fun getHerbsByCategoryPaged(category: String, page: Int, pageSize: Int): List<Herb> = withContext(Dispatchers.IO) {
+    suspend fun getHerbsByCategoryPaged(category: String, pageSize: Int, offset: Int): List<Herb> = withContext(Dispatchers.IO) {
         if (category == "全部") {
-            getAllHerbsPaged(page, pageSize)
+            getAllHerbsPaged(offset / pageSize, pageSize)
         } else {
-            val offset = page * pageSize
             herbDao.getHerbsByCategoryPaged(category, pageSize, offset).map { it.toHerb() }
         }
     }
@@ -345,6 +452,20 @@ class HerbRepository private constructor(private val context: Context) {
      */
     suspend fun getHerbCount(): Int = withContext(Dispatchers.IO) {
         herbDao.getHerbCount()
+    }
+    
+    /**
+     * 在特定分类内搜索中药
+     */
+    suspend fun searchHerbsInCategory(category: String, query: String, pageSize: Int, offset: Int): List<Herb> = withContext(Dispatchers.IO) {
+        if (query.isBlank()) {
+            // 如果搜索词为空，直接返回该分类的中药
+            return@withContext getHerbsByCategoryPaged(category, pageSize, offset)
+        } else {
+            // 否则，在该分类内搜索
+            val normalizedQuery = query.trim().lowercase()
+            herbDao.searchHerbsInCategory(category, normalizedQuery, pageSize, offset).map { it.toHerb() }
+        }
     }
     
     companion object {

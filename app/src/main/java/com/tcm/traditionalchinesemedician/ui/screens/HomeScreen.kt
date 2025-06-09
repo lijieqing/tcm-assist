@@ -2,6 +2,7 @@ package com.tcm.traditionalchinesemedician.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,60 +15,89 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.flowlayout.FlowRow
 import com.tcm.traditionalchinesemedician.R
 import com.tcm.traditionalchinesemedician.data.Herb
-import com.tcm.traditionalchinesemedician.data.HerbRepository
+import com.tcm.traditionalchinesemedician.ui.viewmodels.HomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onHerbClick: (Int) -> Unit,
     onCategoryClick: (String) -> Unit,
-    onSearchTermClick: (String) -> Unit = onCategoryClick // 默认复用onCategoryClick函数
+    onSearchTermClick: (String) -> Unit = onCategoryClick, // 默认复用onCategoryClick函数
+    viewModel: HomeViewModel = viewModel()
 ) {
-    val context = LocalContext.current
-    val repository = remember { HerbRepository.getInstance(context) }
+    // Get UI state from ViewModel
+    val uiState by viewModel.uiState.collectAsState()
     
-    // State for featured herbs
-    var featuredHerbs by remember { mutableStateOf(emptyList<Herb>()) }
-    var categories by remember { mutableStateOf(emptyList<String>()) }
-    var recommendedFunctions by remember { mutableStateOf(emptyList<String>()) }
-    var recommendedClinicalApplications by remember { mutableStateOf(emptyList<String>()) }
-    
-    // LaunchedEffect to load data when screen becomes visible
-    LaunchedEffect(key1 = Unit) {
-        // Load featured herbs
-        featuredHerbs = repository.getAllHerbsSync().take(3)
-        
-        // Load categories
-        categories = repository.getAllCategories()
-        
-        // Load recommended functions and clinical applications
-        recommendedFunctions = repository.getRecommendedFunctions(8)
-        recommendedClinicalApplications = repository.getRecommendedClinicalApplications(8)
-    }
-    
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+    ) {
+        when {
+            uiState.isLoading -> {
+                // Show loading indicator
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            uiState.error != null -> {
+                // Show error state with retry button
+                HomeErrorState(
+                    error = uiState.error!!,
+                    onRetry = { viewModel.retryLoading() },
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            else -> {
+                // Show content when data is loaded
+                HomeContent(
+                    featuredHerbs = uiState.featuredHerbs,
+                    categories = uiState.categories,
+                    recommendedFunctions = uiState.recommendedFunctions,
+                    recommendedClinicalApplications = uiState.recommendedClinicalApplications,
+                    onHerbClick = onHerbClick,
+                    onCategoryClick = onCategoryClick,
+                    onSearchTermClick = onSearchTermClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeContent(
+    featuredHerbs: List<Herb>,
+    categories: List<String>,
+    recommendedFunctions: List<String>,
+    recommendedClinicalApplications: List<String>,
+    onHerbClick: (Int) -> Unit,
+    onCategoryClick: (String) -> Unit,
+    onSearchTermClick: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
         // Welcome section with header
@@ -84,7 +114,16 @@ fun HomeScreen(
             modifier = Modifier.padding(vertical = 8.dp)
         )
         
-        FeaturedHerbsSection(featuredHerbs, onHerbClick)
+        if (featuredHerbs.isEmpty()) {
+            EmptyState(
+                message = stringResource(R.string.no_featured_herbs),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+            )
+        } else {
+            FeaturedHerbsSection(featuredHerbs, onHerbClick)
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -95,7 +134,16 @@ fun HomeScreen(
             modifier = Modifier.padding(vertical = 8.dp)
         )
         
-        CategoriesSection(categories, onCategoryClick)
+        if (categories.isEmpty()) {
+            EmptyState(
+                message = stringResource(R.string.no_categories),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+            )
+        } else {
+            CategoriesSection(categories, onCategoryClick)
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -106,11 +154,20 @@ fun HomeScreen(
             modifier = Modifier.padding(vertical = 8.dp)
         )
         
-        // 显示8个功效标签，使用缓存的随机推荐
-        FlowTagRow(
-            items = recommendedFunctions,
-            onItemClick = { function -> onSearchTermClick(function) }
-        )
+        if (recommendedFunctions.isEmpty()) {
+            EmptyState(
+                message = stringResource(R.string.no_functions),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+            )
+        } else {
+            // 显示功效标签
+            FlowTagRow(
+                items = recommendedFunctions,
+                onItemClick = { function -> onSearchTermClick(function) }
+            )
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -121,11 +178,20 @@ fun HomeScreen(
             modifier = Modifier.padding(vertical = 8.dp)
         )
         
-        // 显示8个临床应用标签，使用缓存的随机推荐
-        FlowTagRow(
-            items = recommendedClinicalApplications,
-            onItemClick = { application -> onSearchTermClick(application) }
-        )
+        if (recommendedClinicalApplications.isEmpty()) {
+            EmptyState(
+                message = stringResource(R.string.no_clinical_applications),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+            )
+        } else {
+            // 显示临床应用标签
+            FlowTagRow(
+                items = recommendedClinicalApplications,
+                onItemClick = { application -> onSearchTermClick(application) }
+            )
+        }
     }
 }
 
@@ -230,6 +296,48 @@ fun TagItem(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+fun HomeErrorState(
+    error: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = error,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onRetry) {
+            Text(text = stringResource(R.string.retry))
+        }
+    }
+}
+
+@Composable
+fun EmptyState(
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
         )
     }
 } 

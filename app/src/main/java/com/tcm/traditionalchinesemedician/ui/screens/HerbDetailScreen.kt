@@ -1,7 +1,17 @@
 package com.tcm.traditionalchinesemedician.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -10,86 +20,81 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LocalPharmacy
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import com.tcm.traditionalchinesemedician.R
 import com.tcm.traditionalchinesemedician.data.Herb
-import com.tcm.traditionalchinesemedician.data.HerbPairing
-import com.tcm.traditionalchinesemedician.data.HerbRepository
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
+import com.tcm.traditionalchinesemedician.ui.viewmodels.HerbDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HerbDetailScreen(
-    herbId: Int,
+    viewModel: HerbDetailViewModel,
     onBackPressed: () -> Unit
 ) {
-    val context = LocalContext.current
-    val repository = remember { HerbRepository.getInstance(context) }
-    var herb by remember { mutableStateOf<Herb?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    
-    // Load herb details
-    LaunchedEffect(herbId) {
-        isLoading = true
-        herb = repository.getHerbById(herbId)
-        isLoading = false
-    }
+    val uiState by viewModel.uiState.collectAsState()
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(herb?.name ?: "中药详情") },
+                title = { Text(uiState.herb?.name ?: "") },
                 navigationIcon = {
                     IconButton(onClick = onBackPressed) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
         }
     ) { paddingValues ->
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (herb != null) {
-            Column(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                HerbHeader(herb!!)
-                
-                HerbContent(herb!!)
-            }
-        } else {
-            // Herb not found
-            Box(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("未找到中药信息")
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            when {
+                uiState.isLoading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                uiState.error != null -> {
+                    HerbDetailErrorState(
+                        error = uiState.error!!,
+                        onRetry = { viewModel.retryLoading(uiState.herb?.id ?: 0) },
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                uiState.herb != null -> {
+                    HerbDetailContent(herb = uiState.herb!!)
+                }
             }
         }
     }
@@ -174,14 +179,14 @@ fun HerbHeader(herb: Herb) {
             
             Spacer(modifier = Modifier.height(4.dp))
             
-            AssistChip(
+            SuggestionChip(
                 onClick = { },
                 label = { Text(herb.category) },
-                leadingIcon = {
+                icon = {
                     Icon(
                         Icons.Filled.LocalPharmacy,
                         contentDescription = null,
-                        Modifier.size(AssistChipDefaults.IconSize)
+                        Modifier.size(SuggestionChipDefaults.IconSize)
                     )
                 }
             )
@@ -450,6 +455,43 @@ fun PropertyItem(label: String, value: String?) {
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(start = 8.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun HerbDetailContent(herb: Herb) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        HerbHeader(herb)
+        
+        HerbContent(herb)
+    }
+}
+
+@Composable
+fun HerbDetailErrorState(
+    error: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = error,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onRetry) {
+            Text(text = stringResource(R.string.retry))
         }
     }
 } 

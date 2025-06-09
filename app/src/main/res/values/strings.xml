@@ -20,6 +20,15 @@
     <string name="learning_modules">学习模块</string>
     <string name="start_learning">开始学习</string>
     
+    <!-- Loading and Error States -->
+    <string name="loading">正在加载...</string>
+    <string name="retry">重试</string>
+    <string name="error_loading_data">加载数据失败</string>
+    <string name="no_featured_herbs">暂无精选中药</string>
+    <string name="no_categories">暂无分类数据</string>
+    <string name="no_functions">暂无功效数据</string>
+    <string name="no_clinical_applications">暂无临床应用数据</string>
+    
     <!-- Herbs Screen -->
     <string name="herbs_list">中药列表</string>
     <string name="view_details">查看详情</string>
@@ -82,4 +91,6 @@
     <string name="language">语言</string>
     <string name="about_app">关于应用</string>
     <string name="logout">退出登录</string>
+    <string name="favorites">收藏</string>
+    <string name="recent_views">最近浏览</string>
 </resources> 

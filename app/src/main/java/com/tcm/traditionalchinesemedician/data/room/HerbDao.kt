@@ -69,9 +69,10 @@ interface HerbDao {
      */
     @Query("SELECT * FROM herbs WHERE name LIKE '%' || :query || '%' OR " +
            "(pinYin IS NOT NULL AND pinYin LIKE '%' || :query || '%') OR " +
-           "(functions IS NOT NULL AND functions LIKE '%' || :query || '%') OR " +
-           "(clinicalApplication IS NOT NULL AND clinicalApplication LIKE '%' || :query || '%') OR " +
-           "(effects IS NOT NULL AND effects LIKE '%' || :query || '%')")
+           "(functions IS NOT NULL AND functions LIKE '%\"' || :query || '\"%') OR " +
+           "(clinicalApplication IS NOT NULL AND clinicalApplication LIKE '%\"' || :query || '\"%') OR " +
+           "(effects IS NOT NULL AND effects LIKE '%' || :query || '%') OR " +
+           "(category LIKE '%' || :query || '%')")
     suspend fun searchHerbs(query: String): List<HerbEntity>
     
     /**
@@ -83,9 +84,10 @@ interface HerbDao {
      */
     @Query("SELECT * FROM herbs WHERE name LIKE '%' || :query || '%' OR " +
            "(pinYin IS NOT NULL AND pinYin LIKE '%' || :query || '%') OR " +
-           "(functions IS NOT NULL AND functions LIKE '%' || :query || '%') OR " +
-           "(clinicalApplication IS NOT NULL AND clinicalApplication LIKE '%' || :query || '%') OR " +
-           "(effects IS NOT NULL AND effects LIKE '%' || :query || '%') " +
+           "(functions IS NOT NULL AND functions LIKE '%\"' || :query || '\"%') OR " +
+           "(clinicalApplication IS NOT NULL AND clinicalApplication LIKE '%\"' || :query || '\"%') OR " +
+           "(effects IS NOT NULL AND effects LIKE '%' || :query || '%') OR " +
+           "(category LIKE '%' || :query || '%') " +
            "LIMIT :limit OFFSET :offset")
     suspend fun searchHerbsPaged(query: String, limit: Int, offset: Int): List<HerbEntity>
     
@@ -107,4 +109,21 @@ interface HerbDao {
      */
     @Query("SELECT COUNT(*) FROM herbs")
     suspend fun getHerbCount(): Int
+
+    /**
+     * 在特定分类内搜索中药
+     * @param category 要搜索的分类
+     * @param query 搜索关键词
+     * @param limit 最大返回数量
+     * @param offset 起始偏移量
+     * @return 符合条件的中药列表
+     */
+    @Query("SELECT * FROM herbs WHERE category = :category AND " +
+           "(name LIKE '%' || :query || '%' OR " +
+           "(pinYin IS NOT NULL AND pinYin LIKE '%' || :query || '%') OR " +
+           "(functions IS NOT NULL AND functions LIKE '%\"' || :query || '\"%') OR " +
+           "(clinicalApplication IS NOT NULL AND clinicalApplication LIKE '%\"' || :query || '\"%') OR " +
+           "(effects IS NOT NULL AND effects LIKE '%' || :query || '%')) " +
+           "LIMIT :limit OFFSET :offset")
+    suspend fun searchHerbsInCategory(category: String, query: String, limit: Int, offset: Int): List<HerbEntity>
 } 
